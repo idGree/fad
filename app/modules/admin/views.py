@@ -1,0 +1,116 @@
+# app/modules/admin/views.py
+"""
+Модуль с пользовательскими классами для административной панели.
+
+Используется для организации и управления маршрутами (routes) и обработчиками запросов, связанными с этим модулем.
+"""
+from flask import redirect, request, url_for, flash, render_template
+from flask_login import current_user
+from flask_admin.contrib.sqla import ModelView
+from flask_admin import AdminIndexView, expose
+
+
+class MyModelView(ModelView):
+    """
+        Класс для управления моделями через Flask-Admin.
+
+        Этот класс настраивает доступ к страницам управления моделями в административной панели.
+        Доступ разрешен только авторизованным пользователям с ролью 'admin'.
+
+        Методы:
+            is_accessible() -> bool:
+                Проверяет, доступен ли данный интерфейс для текущего пользователя.
+
+            inaccessible_callback(name: str, **kwargs):
+                Перенаправляет на страницу входа, если доступ к панели запрещен.
+        """
+
+    # page_size = 100
+    # action_disallowed_list = ['delete', ]
+    # can_view_details = True  # show a modal dialog with records details
+
+    def is_accessible(self):
+        """
+        Определяет, доступен ли данный интерфейс для текущего пользователя.
+
+        Доступ разрешен только авторизованным пользователям с ролью 'admin'.
+
+        :return: True, если пользователь авторизован и имеет роль 'admin', иначе False.
+        :rtype: bool
+        """
+        if current_user.is_authenticated and current_user.role == 'admin':
+            return True
+        flash('Доступ в админку разрешен только администраторам!', 'danger')
+        return False
+
+    def inaccessible_callback(self, name, **kwargs):
+        """
+        Перенаправляет пользователя на страницу входа, если доступ запрещен.
+
+        :param name: Имя вызванного действия.
+        :type name: str
+        :param kwargs: Дополнительные параметры.
+        :return: Перенаправление на страницу входа.
+        :rtype: werkzeug.wrappers.Response
+        """
+        return redirect(url_for('login.login', next=request.path))
+
+    def is_action_allowed(self, name):
+        """
+        Проверяет, разрешены ли массовые действия (bulk actions). В данном случае все массовые действия отключены.
+
+        :param name: Имя действия.
+        :return: False, поскольку массовые действия не поддерживаются.
+        :rtype: bool
+        """
+        return False
+
+
+class MyAdminIndexView(AdminIndexView):
+    """
+        Класс для настройки главной страницы административной панели.
+
+        Этот класс управляет доступом к главной странице панели Flask-Admin.
+        Доступ разрешен только авторизованным пользователям с ролью 'admin'.
+
+        Методы:
+            is_accessible() -> bool:
+                Проверяет, доступен ли данный интерфейс для текущего пользователя.
+
+            inaccessible_callback(name: str, **kwargs):
+                Перенаправляет на страницу входа, если доступ к панели запрещен.
+        """
+
+    def is_accessible(self):
+        """
+        Определяет, доступен ли данный интерфейс для текущего пользователя.
+
+        Доступ разрешен только авторизованным пользователям с ролью 'admin'.
+
+        :return: True, если пользователь авторизован и имеет роль 'admin', иначе False.
+        :rtype: bool
+        """
+        if current_user.is_authenticated and current_user.role == 'admin':
+            return True
+        flash('Доступ в админку разрешен только администраторам!', 'danger')
+        return False
+
+    def inaccessible_callback(self, name, **kwargs):
+        """
+        Перенаправляет пользователя на страницу входа, если доступ запрещен.
+
+        :param name: Имя вызванного действия.
+        :type name: str
+        :param kwargs: Дополнительные параметры.
+        :return: Перенаправление на страницу входа.
+        :rtype: werkzeug.wrappers.Response
+        """
+        return redirect(url_for('login.login', next=request.path))
+
+    @expose('/')
+    def index(self):
+        """
+        Кастомная главная страница для административной панели.
+        Отображает ссылки на справочники.
+        """
+        return self.render('admin/index.html')

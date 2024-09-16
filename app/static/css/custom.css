@@ -1,1 +1,118 @@
-/* Custom CSS for the app */
+/* Custom page CSS
+-------------------------------------------------- */
+/* Not required for template or sticky footer method. */
+
+main > .container {
+    padding: 60px 15px 0;
+}
+
+.footer {
+    background-color: #f5f5f5;
+}
+
+.footer > .container {
+    padding-right: 15px;
+    padding-left: 15px;
+}
+
+code {
+    font-size: 80%;
+}
+
+.bd-placeholder-img {
+    font-size: 1.125rem;
+    text-anchor: middle;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+@media (min-width: 768px) {
+    .bd-placeholder-img-lg {
+        font-size: 3.5rem;
+    }
+}
+
+body {
+    padding-top: 5rem;
+    font-family: 'JetBrains Mono', monospace; /* Запасной шрифт - monospace */
+}
+
+.starter-template {
+    padding: 3rem 1.5rem;
+    text-align: center;
+}
+
+.svg-icon {
+    width: 20px; /* Задаем размеры */
+    height: 20px;
+    background-size: cover;
+    filter: invert(20%) sepia(100%) saturate(5000%) hue-rotate(0deg) brightness(100%) contrast(100%);
+}
+
+.icon-link {
+    transition: filter 0.3s ease; /* Плавный переход цвета */
+}
+
+.icon-edit {
+    filter: invert(27%) sepia(99%) saturate(4018%) hue-rotate(203deg) brightness(91%) contrast(99%);
+}
+
+.icon-trash {
+    filter: invert(19%) sepia(90%) saturate(7466%) hue-rotate(356deg) brightness(99%) contrast(88%);
+}
+
+.icon-link:hover .icon-edit,
+.icon-link:hover .icon-trash {
+    filter: brightness(0) saturate(100%); /* Устанавливаем цвет на черный */
+}
+
+.divider {
+    border-top: 1px solid #ccc; /* цвет линии */
+    margin: 20px 0; /* отступы сверху и снизу */
+}
+
+/* Подключение шрифта JetBrains Mono */
+@font-face {
+    font-family: 'JetBrains Mono', monospace;
+    src: url('../font/JetBrainsMono-1.0.3/web/eot/JetBrainsMono-Regular.eot'); /* IE9 Compat Modes */
+    src: url('../font/JetBrainsMono-1.0.3/web/eot/JetBrainsMono-Regular.eot?#iefix') format('embedded-opentype'), /* IE6-IE8 */ url('../font/JetBrainsMono-1.0.3/web/woff2/JetBrainsMono-Regular.woff2') format('woff2'), /* Супер современные браузеры */ url('../font/JetBrainsMono-1.0.3/web/woff/JetBrainsMono-Regular.woff') format('woff'); /* Современные браузеры */
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+    font-optical-sizing: auto;
+}
+
+.modal-footer {
+    justify-content: flex-start;
+}
+
+.modal-content {
+    width: 60%;
+}
+
+.bg-form {
+
+    padding: 1rem;
+    border: 1px solid #ced4da;
+    background-color: #f8f9fa;
+}
+
+.toast-warning {
+    background-color: #fff3cd;
+}
+
+.toast-success {
+    background-color: #d4edda;
+}
+
+.toast-danger {
+    background-color: #f8d7da;
+}
+
+
+.nav-item.active .nav-link {
+    color: #ffc107 !important;
+}
+

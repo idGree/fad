@@ -1,0 +1,185 @@
+<!-- template/base.html -->
+<!doctype html>
+<html lang="ru" class="h-100">
+{% import 'admin/layout.html' as layout with context -%}
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>{% block title %}{% if admin_view.category %}{{ admin_view.category }} - {% endif %}{{ admin_view.admin.name }}: {{ admin_view.name }}{% endblock %}</title>
+
+    <script src="{{ url_for('static', filename='js/jquery-3.7.1.min.js') }}"></script>
+    <script>window.jQuery || document.write('<script src="{{ url_for('static', filename='js/jquery-3.7.1.min.js') }}"><\/script>')</script>
+    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/flatpickr.min.css') }}">
+    <script src="{{ url_for('static', filename='js/flatpickr.min.js') }}"></script>
+    <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/airbnb.css">
+
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/select2.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/logo.svg') }}">
+    <style>
+        .fa-pencil, .fa-trash, .fa-times {
+            font-size: 20px;
+            float: left;
+            margin: 0;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            background-size: cover;
+        }
+
+        .fa-pencil {
+            background: url('{{ url_for("static", filename="img/edit.svg") }}') no-repeat center center;
+            filter: invert(27%) sepia(99%) saturate(4018%) hue-rotate(203deg) brightness(91%) contrast(99%);
+        }
+
+        .fa-trash {
+            background: url('{{ url_for("static", filename="img/trash.svg") }}') no-repeat center center;
+            filter: invert(19%) sepia(90%) saturate(7466%) hue-rotate(356deg) brightness(99%) contrast(88%);
+        }
+
+        .fa-times {
+            background: url('{{ url_for("static", filename="img/x.svg") }}') no-repeat center center;
+            filter: invert(19%) sepia(90%) saturate(7466%) hue-rotate(356deg) brightness(99%) contrast(88%);
+        }
+
+        .fa-pencil:hover, .fa-trash:hover {
+            filter: brightness(0) saturate(100%);
+        }
+
+        .icon > button {
+            border: none !important;
+            background: none !important;
+        }
+
+    </style>
+</head>
+<body class="d-flex flex-column h-100">
+{% block page_body %}
+    <header>
+        <!-- Fixed navbar -->
+        <nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
+            <a class="navbar-brand p-0 me-0 me-lg-2" href="{{ url_for('index.index') }}" aria-label="{{ title }}">
+                <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="{{ title }}" width="32" height="32">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExampleDefault" aria-controls="navbarsExampleDefault" aria-expanded="false"
+                    aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <a class="navbar-brand" href="{{ url_for('index.index') }}">В кабинет</a>
+
+            <div class="collapse navbar-collapse" id="navbarsExampleDefault">
+                <ul class="navbar-nav mr-auto">
+                    {% block main_menu %}
+                        {{ layout.menu() }}
+                    {% endblock %}
+                </ul>
+                <a class="btn btn-warning my-2 my-sm-0" href="{{ url_for('login.logout') }}">Выход</a>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <div class="container-fluid mb-3 mt-2">
+            <h1>{{ admin_view.name }}</h1>
+            <!-- Вывод flash-сообщений -->
+            {% block messages %}
+                {{ layout.messages() }}
+            {% endblock %}
+
+            {% set render_ctx = h.resolve_ctx() %}
+
+            <!-- Основной блок контента -->
+            {% block body %}
+
+            {% endblock %}
+        </div>
+    </main>
+
+    <footer class="footer mt-auto py-3 border-top text-center">
+        <div class="container">
+            <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="{{ title }}" width="32" height="32">
+            <span class="text-muted">Company</span>
+        </div>
+    </footer>
+
+    <!-- Toast -->
+    <div class="position-fixed bottom-0 right-0 p-3" style="z-index: 5; right: 0; bottom: 0;">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div id="liveToast" class="toast hide toast-{{ category }}" role="alert" aria-live="assertive" aria-atomic="true" data-delay="2000">
+                        <div class="toast-header">
+                            <img src="{{ url_for('static', filename='img/bell.svg') }}" class="rounded mr-2 svg-icon">
+                            <strong class="mr-auto">Внимание!</strong>
+
+                            <button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="toast-body">
+                            {{ message }}
+                        </div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <script src="{{ url_for('static', filename='js/select2.min.js') }}"></script>
+
+    <script type="text/javascript">
+        document.addEventListener('DOMContentLoaded', function () {
+            // Инициализация Select2
+            document.querySelectorAll('select[data-role="select2"]').forEach(function (select) {
+                $(select).select2();  // Использование jQuery для Select2
+            });
+
+            // Инициализация toasts
+            var toastElements = document.querySelectorAll('.toast');
+            toastElements.forEach(function (toastElement) {
+                var toast = new bootstrap.Toast(toastElement, {
+                    autohide: true,
+                    delay: 5000
+                });
+                toast.show();
+            });
+
+            // Диалог подтверждения для кнопок удаления
+            document.querySelectorAll('.fa-trash').forEach(function (deleteButton) {
+                deleteButton.addEventListener('click', function (event) {
+                    if (!confirm('Вы уверены, что хотите удалить эту запись?')) {
+                        event.preventDefault();
+                    }
+                });
+            });
+
+            // Инициализация Date и DateTime полей с отладкой
+            document.querySelectorAll('input[type="date"], input[type="datetime-local"]').forEach(function (input) {
+                input.addEventListener('change', function () {
+                    // Убедимся, что данные изменяются корректно
+                    console.log("Выбранное значение:", input.value);
+                });
+            });
+
+            // Проверка значений перед отправкой формы
+            document.querySelector('form').addEventListener('submit', function (event) {
+                var dateInput = document.querySelector('input[type="date"]');
+                var dateTimeInput = document.querySelector('input[type="datetime-local"]');
+
+                console.log('Отправляемая дата:', dateInput ? dateInput.value : 'нет поля даты');
+                console.log('Отправляемое дата и время:', dateTimeInput ? dateTimeInput.value : 'нет поля даты и времени');
+            });
+        });
+    </script>
+
+
+
+
+{% endblock %}
+</body>
+</html>

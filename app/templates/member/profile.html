@@ -1,0 +1,26 @@
+<!-- templates/member/profile.html -->
+{% extends "base.html" %}
+
+{% block content %}
+
+    <div class="container-fluid mb-3 mt-2">
+        <h1>{{ title }}</h1>
+        <p>Вы зашли как:</p>
+
+        <ul>
+            <li>
+                ФИО: <strong>{{ current_user.user_name }}</strong>
+            </li>
+            <li>
+                Email: <strong>{{ current_user.user_email }}</strong>
+            </li>
+            <li>
+                Роль: <strong>{{ current_user.role }}</strong>
+            </li>
+        </ul>
+        <hr>
+        <h3>Дашборды:</h3>
+        <p>В разработке...</p>
+    </div>
+
+{% endblock %}

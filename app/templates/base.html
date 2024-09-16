@@ -1,21 +1,141 @@
-<!DOCTYPE html>
-<html lang="ru">
+<!-- template/base.html -->
+<!doctype html>
+<html lang="ru" class="h-100">
 
 <head>
-    <meta charset="UTF-8">
-    <title>Title</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>{{ title }}</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap-datepicker.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/select2.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+    <script src="{{ url_for('static', filename='js/chart.js') }}"></script>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/logo.svg') }}">
+
 </head>
+<body class="d-flex flex-column h-100">
 
-<body>
+<header>
+    <!-- Fixed navbar -->
+    <nav class="navbar navbar-expand-md navbar-dark bg-secondary fixed-top">
+        <a class="navbar-brand p-0 me-0 me-lg-2" href="{{ url_for('index.index') }}" aria-label="{{ title }}">
+            <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="{{ title }}" width="32" height="32">
+        </a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExampleDefault" aria-controls="navbarsExampleDefault" aria-expanded="false"
+                aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
 
-<div>
-    <p>
-        Базовый шаблон Bootstrap v.4
-        Используется как для административной панели,
-        так и для клиентского кабинета,
-        так и для главной страницы для неавторизованного пользователя.
-    </p>
+        <div class="collapse navbar-collapse" id="navbarsExampleDefault">
+            <ul class="navbar-nav mr-auto">
+                {% if current_user.role == 'admin' %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin.index') }}">Админка</a>
+                    </li>
+                {% endif %}
+                {% if current_user.role in ['user', 'admin'] %}
+                    <li class="nav-item {% if request.path == url_for('profile.profile') %}active{% endif %}">
+                        <a class="nav-link" href="{{ url_for('profile.profile') }}">Profile</a>
+                    </li>
+                    <li class="nav-item {% if request.path == url_for('user.user') %}active{% endif %}">
+                        <a class="nav-link" href="{{ url_for('user.user') }}">User</a>
+                    </li>
+                    <li class="nav-item {% if request.path == url_for('staff.staff') %}active{% endif %}">
+                        <a class="nav-link" href="{{ url_for('staff.staff') }}">Staff</a>
+                    </li>
+                    <li class="nav-item {% if request.path == url_for('team.team') %}active{% endif %}">
+                        <a class="nav-link" href="{{ url_for('team.team') }}">Team</a>
+                    </li>
+                    <li class="nav-item {% if request.path == url_for('team_set.team_set') %}active{% endif %}">
+                        <a class="nav-link" href="{{ url_for('team_set.team_set') }}">TeamSet</a>
+                    </li>
+                {% endif %}
+            </ul>
+            {% if current_user.is_authenticated %}
+                <a href="{{ url_for('login.logout') }}" class="btn btn-warning my-2 my-sm-0r">Выйти</a>
+            {% else %}
+                <a href="{{ url_for('login.login') }}" class="btn btn-warning my-2 my-sm-0">Войти</a>
+            {% endif %}
+        </div>
+    </nav>
+</header>
+
+
+<main>
+    {% block content %}{% endblock %}
+</main>
+
+
+<footer class="footer mt-auto py-3 border-top text-center">
+    <div class="container">
+        <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="{{ title }}" width="32" height="32">
+        <span class="text-muted">Company</span>
+    </div>
+</footer>
+
+<!-- Toast -->
+<div class="position-fixed bottom-0 right-0 p-3" style="z-index: 5; right: 0; bottom: 0;">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div id="liveToast" class="toast hide toast-{{ category }}" role="alert" aria-live="assertive" aria-atomic="true" data-delay="2000">
+                    <div class="toast-header">
+                        <img src="{{ url_for('static', filename='img/bell.svg') }}" class="rounded mr-2 svg-icon">
+                        <strong class="mr-auto">Внимание!</strong>
+
+                        <button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="toast-body">
+                        {{ message }}
+                    </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
 </div>
+
+<script src="{{ url_for('static', filename='js/jquery-3.7.1.min.js') }}"></script>
+<script>window.jQuery || document.write('<script src="{{ url_for('static', filename='js/jquery-3.7.1.min.js') }}"><\/script>')</script>
+<script src="{{ url_for('static', filename='js/select2.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/bootstrap-datepicker.min.js') }}"></script>
+<script type="text/javascript">
+    // Инициализация компонентов при загрузке документа
+    $(document).ready(function () {
+
+        // Инициализируем Select2 для всех элементов с атрибутом data-role="select2"
+        $('select[data-role="select2"]').select2();
+
+        // Инициализация DatePicker
+        $('#datepicker').datepicker({
+            format: 'mm/dd/yyyy',
+            todayBtn: "linked",
+            clearBtn: true,
+            language: "ru",
+            autoclose: true,
+            todayHighlight: true
+        });
+    });
+
+    // Инициализация тостов при загрузке страницы
+    document.addEventListener('DOMContentLoaded', function () {
+
+        // Найдем все элементы с классом 'toast' и активируем их
+        var toastElements = document.querySelectorAll('.toast');
+        toastElements.forEach(function (toastElement) {
+            var toast = new bootstrap.Toast(toastElement, {
+                autohide: true,
+                delay: 5000
+            });
+            toast.show();
+        });
+    });
+
+</script>
 
 </body>
 </html>

@@ -1,0 +1,15 @@
+# app/modules/user/views.py
+"""
+Модуль с пользовательскими классами для страницы пользователей.
+
+Используется для организации и управления маршрутами (routes) и обработчиками запросов, связанными с этим модулем.
+"""
+from flask import Blueprint, render_template
+
+blueprint = Blueprint('user', __name__, url_prefix='/user')
+
+
+@blueprint.route('/')
+def user():
+    title = 'User'
+    return render_template('member/user/index.html', title=title)

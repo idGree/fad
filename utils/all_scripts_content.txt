@@ -1,0 +1,1796 @@
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/db.py ---
+# app/db.py
+"""
+Модуль, настраивающий экземпляр SQLAlchemy для управления базой данных в Flask приложении.
+
+Этот модуль создает глобальный объект `db`, который используется для взаимодействия с базой данных
+через ORM (Object-Relational Mapping) подход, предоставляемый библиотекой SQLAlchemy. Этот объект
+будет использоваться в других частях приложения для определения моделей и выполнения запросов к базе данных.
+"""
+from flask_sqlalchemy import SQLAlchemy
+
+# Создает экземпляр SQLAlchemy, который используется для работы с базой данных в приложении.
+# Экземпляр SQLAlchemy, предоставляющий доступ к функциональности ORM для взаимодействия с базой данных.
+db = SQLAlchemy()
+
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/__init__.py ---
+# app/__init__.py
+"""
+Инициализация основного Flask-приложения.
+
+Этот модуль создает и конфигурирует экземпляр приложения Flask,
+инициализирует расширения, такие как база данных, миграции и менеджер
+сессий пользователей, а также регистрирует синие принты (blueprints)
+для различных модулей приложения.
+"""
+
+# Третьесторонние библиотеки
+from flask import Flask, render_template, redirect, url_for, request
+from flask_admin import Admin
+from flask_login import LoginManager
+from flask_migrate import Migrate
+from flask_wtf import CSRFProtect
+
+# Локальные импорты
+from app.db import db
+from app.config.development import DevelopmentConfig
+from utils.logging import configure_logging
+
+# Импортируем функцию для регистрации обработчиков ошибок
+from app.modules.error.views import register_error_handlers
+
+# Модели данных
+from app.modules.user.models import User
+from app.modules.staff.models import Staff
+from app.modules.team.models import Team
+from app.modules.team_set.models import TeamSet
+
+# Вьюхи админки
+from app.modules.admin.views import MyModelView, MyAdminIndexView
+from app.modules.admin.user_views import UserAdmin
+
+# from app.modules.admin.staff_views import StaffAdmin
+from app.modules.admin.team_views import TeamAdmin
+# from app.modules.admin.team_set_views import TeamSetAdmin
+
+csrf = CSRFProtect()
+
+
+def create_app(config_class=DevelopmentConfig):
+    """
+    Создает и конфигурирует экземпляр Flask-приложения.
+
+    :param config_class: Класс конфигурации, который будет использоваться для настройки приложения.
+    :type config_class: class
+
+    :return: Настроенный экземпляр Flask-приложения.
+    :rtype: Flask
+    """
+    app = Flask(__name__)
+    app.config.from_object(config_class)
+
+    # Инициализация CSRF-защиты
+    csrf.init_app(app)
+
+    # Инициализация расширений
+    db.init_app(app)
+    migrate = Migrate(app, db)
+
+    # Настройка логирования
+    configure_logging(app)
+
+    # Настройка Flask-Login
+    # Поскольку Flask-Login ничего не знает о базах данных, ему нужна помощь приложения при загрузке пользователя.
+    # По этой причине расширение ожидает, что приложение настроит функцию загрузчика пользователя,
+    # которую можно вызвать для загрузки пользователя с идентификатором.
+    login_manager = LoginManager()
+    login_manager.init_app(app)
+    login_manager.login_view = 'login.login'
+    login_manager.login_message = 'Доступ в админку разрешен только авторизованным пользователям!'
+    login_manager.login_message_category = 'danger'
+
+    # Настройка загрузчика пользователя для Flask-Login.
+    @login_manager.user_loader
+    def load_user(id):
+        """
+        Загружает пользователя по его идентификатору.
+
+        Flask-Login использует эту функцию для получения данных о пользователе
+        на основе его идентификатора.
+
+        :param id: Идентификатор пользователя.
+        :type id: int
+
+        :return: Объект пользователя, если пользователь с таким идентификатором существует.
+        :rtype: User or None
+        """
+        return User.query.get(id)
+
+    # Регистрация blueprints
+    from app.modules.index.views import blueprint as index_bp
+    app.register_blueprint(index_bp)
+
+    from app.modules.profile.views import blueprint as profile_bp
+    app.register_blueprint(profile_bp)
+
+    from app.modules.login.views import blueprint as login_bp
+    app.register_blueprint(login_bp)
+
+    from app.modules.user.views import blueprint as user_bp
+    app.register_blueprint(user_bp)
+
+    from app.modules.staff.views import blueprint as staff_bp
+    app.register_blueprint(staff_bp)
+
+    from app.modules.team.views import blueprint as team_bp
+    app.register_blueprint(team_bp)
+
+    from app.modules.team_set.views import blueprint as team_set_bp
+    app.register_blueprint(team_set_bp)
+
+    from app.modules.error.views import blueprint as error_bp
+    app.register_blueprint(error_bp)
+
+    # Регистрация обработчиков ошибок
+    register_error_handlers(app)
+
+    # Создание и регистрация Flask-Admin
+    admin = Admin(app, name='Admin', template_mode='bootstrap4', base_template='admin/base.html', index_view=MyAdminIndexView())
+    admin.add_view(UserAdmin(User, db.session, endpoint='users_admin', name='User'))
+    admin.add_view(TeamAdmin(Team, db.session, endpoint='team_admin', name='Team'))
+
+    # TODO убрать отсюда
+    @app.route('/')
+    def root():
+        """
+        Корневой маршрут приложения.
+
+        :return: Редирект на главную страницу.
+        :rtype: werkzeug.wrappers.Response
+        """
+        return redirect(url_for('index.index'))
+
+    return app
+
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/config/__init__.py ---
+# app/config/__init__.py
+"""
+This is the configuration package. It contains the configuration files for the application.
+"""
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/config/development.py ---
+# app/config/development.py
+"""
+Конфигурационный файл для режима разработки приложения Flask.
+
+Этот модуль содержит глобальные настройки приложения для режима разработки,
+включая параметры подключения к базе данных, параметры безопасности, а также различные
+константы, используемые в приложении. В этом файле определяются такие параметры, как URI базы данных,
+длительность cookies для сессии, ключ безопасности и настройки интерфейса Flask-Admin.
+"""
+
+import os
+import logging
+from datetime import timedelta
+
+
+class DevelopmentConfig:
+    """
+    Конфигурация для режима разработки.
+
+    Класс содержит настройки, специфичные для режима разработки, такие как
+    URI базы данных, ключ безопасности и параметры cookies.
+
+    :cvar BASEDIR: Базовая директория приложения.
+    :cvar SQLALCHEMY_DATABASE_URI: URI для подключения к базе данных SQLite.
+    :cvar SQLALCHEMY_TRACK_MODIFICATIONS: Флаг, указывающий, отслеживать ли изменения объектов SQLAlchemy.
+    :cvar LOGIN_MESSAGE: Сообщение, которое выводится при неудачной попытке авторизации.
+    :cvar REMEMBER_COOKIE_DURATION: Продолжительность жизни cookies для функции "Запомнить меня".
+    :cvar SECRET_KEY: Секретный ключ для защиты сессий и CSRF.
+    :cvar WTF_CSRF_ENABLED: Флаг, включающий защиту CSRF для форм.
+    :cvar LOGS_DIR: Директория для хранения логов.
+    :cvar LOG_FILE: Путь к файлу логов.
+    :cvar LOGGING_LEVEL: Уровень логирования для приложения.
+    """
+
+    #: Базовая директория приложения
+    BASEDIR = os.path.dirname(os.path.abspath(__file__))
+
+    #: Директория для логов (находится на одном уровне с папкой app)
+    LOGS_DIR = os.path.join(BASEDIR, '..', '..', 'logs')
+
+    #: Путь к файлу логов
+    LOG_FILE = os.path.join(LOGS_DIR, 'app.log')
+
+    #: Уровень логирования
+    LOGGING_LEVEL = logging.DEBUG
+
+    #: URI базы данных для подключения к SQLite, используется для режима разработки
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///' + os.path.join(BASEDIR, '..', 'app.db')
+
+    #: Флаг для отключения отслеживания изменений объектов SQLAlchemy (экономит ресурсы памяти)
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+    #: Сообщение, которое выводится при неудачной попытке авторизации
+    LOGIN_MESSAGE = 'Ошибка! Вам доступ запрещен.'
+
+    #: Длительность хранения cookies для функции "Запомнить меня"
+    REMEMBER_COOKIE_DURATION = timedelta(days=30)
+
+    #: Секретный ключ для защиты сессий и CSRF (загружается из .env)
+    SECRET_KEY = os.getenv('SECRET_KEY', 'you-will-never-guess')
+
+    #: Включение защиты CSRF для всех форм
+    WTF_CSRF_ENABLED = True
+
+    # Опциональные настройки для Flask-Admin
+    # FLASK_ADMIN_SWATCH = 'default'
+    # FLASK_ADMIN_FLUID_LAYOUT = True
+
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/templates/base.html ---
+<!-- template/base.html -->
+<!doctype html>
+<html lang="ru" class="h-100">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>{{ title }}</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap-datepicker.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/select2.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+    <script src="{{ url_for('static', filename='js/chart.js') }}"></script>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/logo.svg') }}">
+
+</head>
+<body class="d-flex flex-column h-100">
+
+<header>
+    <!-- Fixed navbar -->
+    <nav class="navbar navbar-expand-md navbar-dark bg-secondary fixed-top">
+        <a class="navbar-brand p-0 me-0 me-lg-2" href="{{ url_for('index.index') }}" aria-label="{{ title }}">
+            <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="{{ title }}" width="32" height="32">
+        </a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExampleDefault" aria-controls="navbarsExampleDefault" aria-expanded="false"
+                aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarsExampleDefault">
+            <ul class="navbar-nav mr-auto">
+                {% if current_user.role == 'admin' %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin.index') }}">Админка</a>
+                    </li>
+                {% endif %}
+                {% if current_user.role in ['user', 'admin'] %}
+                    <li class="nav-item {% if request.path == url_for('profile.profile') %}active{% endif %}">
+                        <a class="nav-link" href="{{ url_for('profile.profile') }}">Profile</a>
+                    </li>
+                    <li class="nav-item {% if request.path == url_for('user.user') %}active{% endif %}">
+                        <a class="nav-link" href="{{ url_for('user.user') }}">User</a>
+                    </li>
+                    <li class="nav-item {% if request.path == url_for('staff.staff') %}active{% endif %}">
+                        <a class="nav-link" href="{{ url_for('staff.staff') }}">Staff</a>
+                    </li>
+                    <li class="nav-item {% if request.path == url_for('team.team') %}active{% endif %}">
+                        <a class="nav-link" href="{{ url_for('team.team') }}">Team</a>
+                    </li>
+                    <li class="nav-item {% if request.path == url_for('team_set.team_set') %}active{% endif %}">
+                        <a class="nav-link" href="{{ url_for('team_set.team_set') }}">TeamSet</a>
+                    </li>
+                {% endif %}
+            </ul>
+            {% if current_user.is_authenticated %}
+                <a href="{{ url_for('login.logout') }}" class="btn btn-warning my-2 my-sm-0r">Выйти</a>
+            {% else %}
+                <a href="{{ url_for('login.login') }}" class="btn btn-warning my-2 my-sm-0">Войти</a>
+            {% endif %}
+        </div>
+    </nav>
+</header>
+
+
+<main>
+    {% block content %}{% endblock %}
+</main>
+
+
+<footer class="footer mt-auto py-3 border-top text-center">
+    <div class="container">
+        <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="{{ title }}" width="32" height="32">
+        <span class="text-muted">Company</span>
+    </div>
+</footer>
+
+<!-- Toast -->
+<div class="position-fixed bottom-0 right-0 p-3" style="z-index: 5; right: 0; bottom: 0;">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div id="liveToast" class="toast hide toast-{{ category }}" role="alert" aria-live="assertive" aria-atomic="true" data-delay="2000">
+                    <div class="toast-header">
+                        <img src="{{ url_for('static', filename='img/bell.svg') }}" class="rounded mr-2 svg-icon">
+                        <strong class="mr-auto">Внимание!</strong>
+
+                        <button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="toast-body">
+                        {{ message }}
+                    </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+</div>
+
+<script src="{{ url_for('static', filename='js/jquery-3.7.1.min.js') }}"></script>
+<script>window.jQuery || document.write('<script src="{{ url_for('static', filename='js/jquery-3.7.1.min.js') }}"><\/script>')</script>
+<script src="{{ url_for('static', filename='js/select2.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/bootstrap-datepicker.min.js') }}"></script>
+<script type="text/javascript">
+    // Инициализация компонентов при загрузке документа
+    $(document).ready(function () {
+
+        // Инициализируем Select2 для всех элементов с атрибутом data-role="select2"
+        $('select[data-role="select2"]').select2();
+
+        // Инициализация DatePicker
+        $('#datepicker').datepicker({
+            format: 'mm/dd/yyyy',
+            todayBtn: "linked",
+            clearBtn: true,
+            language: "ru",
+            autoclose: true,
+            todayHighlight: true
+        });
+    });
+
+    // Инициализация тостов при загрузке страницы
+    document.addEventListener('DOMContentLoaded', function () {
+
+        // Найдем все элементы с классом 'toast' и активируем их
+        var toastElements = document.querySelectorAll('.toast');
+        toastElements.forEach(function (toastElement) {
+            var toast = new bootstrap.Toast(toastElement, {
+                autohide: true,
+                delay: 5000
+            });
+            toast.show();
+        });
+    });
+
+</script>
+
+</body>
+</html>
+
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/templates/member/profile.html ---
+<!-- templates/member/profile.html -->
+{% extends "base.html" %}
+
+{% block content %}
+
+    <div class="container-fluid mb-3 mt-2">
+        <h1>{{ title }}</h1>
+        <p>Вы зашли как:</p>
+
+        <ul>
+            <li>
+                ФИО: <strong>{{ current_user.user_name }}</strong>
+            </li>
+            <li>
+                Email: <strong>{{ current_user.user_email }}</strong>
+            </li>
+            <li>
+                Роль: <strong>{{ current_user.role }}</strong>
+            </li>
+        </ul>
+        <hr>
+        <h3>Дашборды:</h3>
+        <p>В разработке...</p>
+    </div>
+
+{% endblock %}
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/templates/member/index.html ---
+<!-- templates/member/index.html -->
+{% extends "base.html" %}
+
+{% block content %}
+
+    <div class="container-fluid mb-3 mt-2">
+        <h1>{{ title }}</h1>
+        <p class="lead">Главная</p>
+    </div>
+
+{% endblock %}
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/templates/member/login.html ---
+<!-- templates/member/login.html -->
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="container-fluid mb-3 mt-2">
+        <h1>{{ title }}</h1>
+
+        <div class="row">
+            <div class="col-sm-12 col-md-6 col-lg-6 col-xl-4">
+                <form action="{{ url_for('login.login') }}" method="post" class="bg-form">
+                    {{ form.hidden_tag() }}
+
+                    <div class="form-floating mb-3 has-validation form-group">
+                        <label for="email">{{ form.email.label(class="form-label") }}</label>
+                        {{ form.email(class="form-control") }}
+                    </div>
+
+                    <div class="form-floating mb-3">
+                        <label for="password">{{ form.password.label(class="form-label") }}</label>
+                        {{ form.password(class="form-control") }}
+                    </div>
+
+                    <div class="form-check text-start my-3">
+                        {{ form.remember_me(class="form-check-input") }}
+                        {{ form.remember_me.label(class="form-check-label") }}
+                    </div>
+
+                    {{ form.submit(class="btn btn-primary") }}
+                </form>
+            </div>
+        </div>
+
+    </div>
+{% endblock %}
+
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/templates/member/errors.html ---
+<!-- templates/member/errors.html -->
+{% extends "base.html" %}
+
+{% block content %}
+
+    <div class="container-fluid mb-3 mt-2">
+        <h1>{{ title }}</h1>
+        <h2>Ошибка: {{ error_type }}</h2>
+        <p>{{ error_message }}</p>
+    </div>
+
+{% endblock %}
+
+
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/templates/member/team_set/index.html ---
+<!-- templates/member/team_set/index.html -->
+{% extends "base.html" %}
+
+{% block content %}
+
+    <div class="container-fluid mb-3 mt-2">
+        <h1>{{ title }}</h1>
+        <p class="lead">team_set</p>
+    </div>
+
+{% endblock %}
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/templates/member/user/index.html ---
+<!-- templates/member/user/index.html -->
+{% extends "base.html" %}
+
+{% block content %}
+
+    <div class="container-fluid mb-3 mt-2">
+        <h1>{{ title }}</h1>
+        <p class="lead">user</p>
+    </div>
+
+{% endblock %}
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/templates/member/team/index.html ---
+<!-- templates/member/team/index.html -->
+{% extends "base.html" %}
+
+{% block content %}
+
+    <div class="container-fluid mb-3 mt-2">
+        <h1>{{ title }}</h1>
+        <p class="lead">team</p>
+    </div>
+
+{% endblock %}
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/templates/member/staff/index.html ---
+<!-- templates/member/staff/index.html -->
+{% extends "base.html" %}
+
+{% block content %}
+
+    <div class="container-fluid mb-3 mt-2">
+        <h1>{{ title }}</h1>
+        <p class="lead">Staff</p>
+    </div>
+
+{% endblock %}
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/templates/admin/index.html ---
+<!-- templates/admin/index.html -->
+{% extends "admin/master.html" %}
+
+{% block body %}
+    <p class="lead">Все разделы админки:</p>
+
+    <table class="table table-striped">
+        <thead>
+        <tr>
+            <th>#</th>
+            <th>Название</th>
+            <th>Ссылка</th>
+            <th>Описание</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% set directories = [
+        ('User', 'users_admin.index_view', '[user]', 'Пользователи системы для авторизации')
+    ] %}
+
+        {% for directory in directories %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ directory[0] }}</td>
+                <td><a href="{{ url_for(directory[1]) }}">{{ directory[2] }}</a></td>
+                <td>{{ directory[3]|safe }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+{% endblock %}
+
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/templates/admin/base.html ---
+<!-- template/base.html -->
+<!doctype html>
+<html lang="ru" class="h-100">
+{% import 'admin/layout.html' as layout with context -%}
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>{% block title %}{% if admin_view.category %}{{ admin_view.category }} - {% endif %}{{ admin_view.admin.name }}: {{ admin_view.name }}{% endblock %}</title>
+
+    <script src="{{ url_for('static', filename='js/jquery-3.7.1.min.js') }}"></script>
+    <script>window.jQuery || document.write('<script src="{{ url_for('static', filename='js/jquery-3.7.1.min.js') }}"><\/script>')</script>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap-datepicker.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/select2.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+    <script src="{{ url_for('static', filename='js/chart.js') }}"></script>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/logo.svg') }}">
+    <style>
+        .fa-pencil, .fa-trash {
+            font-size: 20px;
+            float: left;
+            margin: 0;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            background-size: cover;
+        }
+
+        .fa-pencil {
+            background: url('{{ url_for("static", filename="img/edit.svg") }}') no-repeat center center;
+            filter: invert(27%) sepia(99%) saturate(4018%) hue-rotate(203deg) brightness(91%) contrast(99%);
+        }
+
+        .fa-trash {
+            background: url('{{ url_for("static", filename="img/trash.svg") }}') no-repeat center center;
+            filter: invert(19%) sepia(90%) saturate(7466%) hue-rotate(356deg) brightness(99%) contrast(88%);
+        }
+
+        .fa-pencil:hover, .fa-trash:hover {
+            filter: brightness(0) saturate(100%);
+        }
+
+        .icon > button {
+            border: none !important;
+            background: none !important;
+        }
+
+    </style>
+</head>
+<body class="d-flex flex-column h-100">
+{% block page_body %}
+    <header>
+        <!-- Fixed navbar -->
+        <nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
+            <a class="navbar-brand p-0 me-0 me-lg-2" href="{{ url_for('index.index') }}" aria-label="{{ title }}">
+                <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="{{ title }}" width="32" height="32">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExampleDefault" aria-controls="navbarsExampleDefault" aria-expanded="false"
+                    aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <a class="navbar-brand" href="{{ url_for('index.index') }}">В кабинет</a>
+
+            <div class="collapse navbar-collapse" id="navbarsExampleDefault">
+                <ul class="navbar-nav mr-auto">
+                    {% block main_menu %}
+                        {{ layout.menu() }}
+                    {% endblock %}
+                </ul>
+                <a class="btn btn-warning my-2 my-sm-0" href="{{ url_for('login.logout') }}">Выход</a>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <div class="container-fluid mb-3 mt-2">
+            <h1>{{ admin_view.name }}</h1>
+            <!-- Вывод flash-сообщений -->
+            {% block messages %}
+                {{ layout.messages() }}
+            {% endblock %}
+
+            {% set render_ctx = h.resolve_ctx() %}
+
+            <!-- Основной блок контента -->
+            {% block body %}
+
+            {% endblock %}
+        </div>
+    </main>
+
+    <footer class="footer mt-auto py-3 border-top text-center">
+        <div class="container">
+            <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="{{ title }}" width="32" height="32">
+            <span class="text-muted">Company</span>
+        </div>
+    </footer>
+
+    <!-- Toast -->
+    <div class="position-fixed bottom-0 right-0 p-3" style="z-index: 5; right: 0; bottom: 0;">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div id="liveToast" class="toast hide toast-{{ category }}" role="alert" aria-live="assertive" aria-atomic="true" data-delay="2000">
+                        <div class="toast-header">
+                            <img src="{{ url_for('static', filename='img/bell.svg') }}" class="rounded mr-2 svg-icon">
+                            <strong class="mr-auto">Внимание!</strong>
+
+                            <button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="toast-body">
+                            {{ message }}
+                        </div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+
+    <!-- Modal for Delete Confirmation -->
+    <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteModalLabel">Внимание!</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    Вы уверены, что хотите удалить эту запись?
+                    <br>
+                    <strong>Отладочная информация:</strong>
+                    <p>Идентификатор записи: <span id="debugRecordId"></span></p>
+                    <p>CSRF-токен: <span id="debugCsrfToken"></span></p>
+                </div>
+                <div class="modal-footer">
+                    <form method="POST" action="{{ url_for('team_admin.delete_view') }}" id="deleteForm">
+                        {{ csrf_token() }}
+                        <input type="hidden" name="id" value="">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Нет</button>
+                        <button type="submit" class="btn btn-danger">Удаляем</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script src="{{ url_for('static', filename='js/select2.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/bootstrap-datepicker.min.js') }}"></script>
+    <script type="text/javascript">
+        document.addEventListener('DOMContentLoaded', function () {
+            // Инициализация Select2 для всех элементов с атрибутом data-role="select2"
+            document.querySelectorAll('select[data-role="select2"]').forEach(function (select) {
+                $(select).select2(); // Используем jQuery для Select2
+            });
+
+            // Инициализация DatePicker
+            var datepicker = document.getElementById('datepicker');
+            if (datepicker) {
+                $(datepicker).datepicker({
+                    format: 'mm/dd/yyyy',
+                    todayBtn: "linked",
+                    clearBtn: true,
+                    language: "ru",
+                    autoclose: true,
+                    todayHighlight: true
+                });
+            }
+
+            // Инициализация тостов
+            var toastElements = document.querySelectorAll('.toast');
+            toastElements.forEach(function (toastElement) {
+                var toast = new bootstrap.Toast(toastElement, {
+                    autohide: true,
+                    delay: 5000
+                });
+                toast.show();
+            });
+
+            // Найти все кнопки удаления
+            const deleteButtons = document.querySelectorAll('form .fa-trash');
+            let formToSubmit = null;
+
+            deleteButtons.forEach(button => {
+                const form = button.closest('form');  // Найти родительскую форму
+
+                button.addEventListener('click', function (event) {
+                    event.preventDefault();
+                    formToSubmit = form;  // Сохранить форму для отправки
+
+                    const recordId = form.querySelector('input[name="id"]').value;  // Получить ID записи
+                    const csrfToken = form.querySelector('input[name="csrf_token"]').value;  // Получить CSRF-токен
+
+                    if (recordId && csrfToken) {
+                        // Установить ID записи в форму модального окна
+                        const modal = document.getElementById('deleteModal');
+                        modal.querySelector('input[name="id"]').value = recordId;
+
+                        // Отладочная информация
+                        document.getElementById('debugRecordId').textContent = recordId;
+                        document.getElementById('debugCsrfToken').textContent = csrfToken;
+
+                        console.log('Идентификатор записи:', recordId);
+                        console.log('CSRF-токен:', csrfToken);
+
+                        // Открыть модальное окно
+                        $('#deleteModal').modal('show');
+                    } else {
+                        console.error('Не удалось получить ID или CSRF-токен');
+                    }
+                });
+            });
+
+            // Обработка подтверждения удаления
+            document.getElementById('confirmDelete').addEventListener('click', function () {
+                if (formToSubmit) {
+                    const recordId = formToSubmit.querySelector('input[name="id"]').value;  // Проверка ID перед отправкой
+                    console.log('Отправляем форму с ID записи:', recordId);
+
+                    // Отправляем форму
+                    formToSubmit.submit();
+                }
+            });
+        });
+    </script>
+
+
+{% endblock %}
+</body>
+</html>
+
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/modules/__init__.py ---
+# app/modules/__init__.py
+"""
+This is the configuration package. It contains the configuration files for the application.
+"""
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/modules/team_set/models.py ---
+# app/modules/team_set/models.py
+"""
+Модуль для определения модели данных TeamSet в приложении Flask.
+
+Этот модуль содержит класс TeamSet, который представляет собой модель данных для хранения информации
+о составе команд в базе данных. Модель используется для отображения связей между сотрудниками и командами,
+а также их участия в проектах, измеряемого в единицах полной занятости (FTE).
+
+Attributes:
+    id (int): Уникальный идентификатор записи состава команды.
+    team_id (int): Внешний ключ, указывающий на команду, к которой принадлежит данная запись.
+    staff_id (int): Внешний ключ, указывающий на сотрудника, к которому принадлежит данная запись.
+    fte (float): Значение FTE, указывающее участие сотрудника в команде (1.0 - полная занятость).
+
+Определение отношений:
+    team (relationship): Связь "многие к одному" с моделью Team, указывает на команду, к которой принадлежит состав.
+    staff (relationship): Связь "многие к одному" с моделью Staff, указывает на сотрудника, входящего в состав команды.
+"""
+from app.db import db
+
+
+class TeamSet(db.Model):
+    __tablename__ = 'team_set'
+
+    id = db.Column(db.Integer, primary_key=True)
+    team_id = db.Column(db.Integer, db.ForeignKey('team.id'), nullable=False)
+    staff_id = db.Column(db.Integer, db.ForeignKey('staff.id'), nullable=False)
+    fte = db.Column(db.Float, nullable=False)
+
+    # Обратные отношения, задающие связь "многие к одному" с Team и Staff.
+    # back_populates указываем во множественном числе.
+    # Эти отношения обеспечивают доступ к родительским записям Team и Staff для каждой записи TeamSet.
+    # 'team' ссылается на одну команду (Team), к которой принадлежит данная запись TeamSet.
+    # 'staff' ссылается на одного сотрудника (Staff), к которому принадлежит данная запись TeamSet.
+    team = db.relationship('Team', back_populates='team_sets', lazy='select')
+    staff = db.relationship('Staff', back_populates='team_sets', lazy='select')
+
+    def __repr__(self):
+        return f"<TeamSet(id={self.id}, team_id={self.team_id}, staff_id={self.staff_id}"
+
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/modules/team_set/__init__.py ---
+# app/modules/team_set/__init__.py
+"""
+This is the configuration package. It contains the configuration files for the application.
+"""
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/modules/team_set/views.py ---
+# app/modules/team_set/views.py
+"""
+Модуль с пользовательскими классами для страницы с составом команд.
+Из справочника сотрудников и справочника команд формируем состав каждой команды.
+Один сотрудник может состоять в нескольких командах.
+
+Используется для организации и управления маршрутами (routes) и обработчиками запросов, связанными с этим модулем.
+"""
+from flask import Blueprint, render_template
+
+blueprint = Blueprint('team_set', __name__, url_prefix='/team_set')
+
+
+@blueprint.route('/')
+def team_set():
+    title = 'team_set'
+    return render_template('member/team_set/index.html', title=title)
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/modules/admin/team_set_views.py ---
+# app/modules/admin/team_set_views.py
+
+from app.modules.admin.views import ModelView
+
+
+class TeamSetAdmin(ModelView):
+    pass
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/modules/admin/staff_views.py ---
+# app/modules/admin/staff_views.py
+
+from app.modules.admin.views import ModelView
+
+
+class StaffAdmin(ModelView):
+    pass
+
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/modules/admin/team_views.py ---
+# app/modules/admin/team_views.py
+
+"""
+Этот файл отвечает за настройку административной панели Flask-Admin для управления командами (Team).
+"""
+from flask import request, redirect, url_for, flash
+from flask_admin import expose
+from flask_admin.contrib.sqla import ModelView
+
+
+class TeamAdmin(ModelView):
+    """
+    Класс TeamAdmin предоставляет интерфейс для управления командами через административную панель.
+    """
+    column_list = ['id', 'team_name', 'team_sets_count']
+    column_searchable_list = ['team_name']
+    column_filters = ['team_name']
+    column_default_sort = ('team_name', True)
+    form_excluded_columns = ['team_sets']
+
+    @expose('/delete/', methods=['POST'])
+    def delete_view(self):
+        # Получаем ID записи из POST-запроса
+        record_id = request.form.get('id')
+        csrf_token = request.form.get('csrf_token')  # Если используется CSRF
+
+        # Отладочные сообщения для логирования
+        print(f"Полученный ID для удаления: {record_id}")
+        print(f"CSRF-токен: {csrf_token}")
+
+        if not record_id:
+            flash('ID записи не указан.', 'error')
+            return redirect(url_for('.index_view'))
+
+        # Попробуем получить запись по переданному ID
+        model = self.get_one(record_id)
+        if not model:
+            flash(f'Запись с ID {record_id} не найдена.', 'error')
+            return redirect(url_for('.index_view'))
+
+        try:
+            # Удаляем запись
+            self.session.delete(model)
+            self.session.commit()  # Применяем изменения в базе данных
+            flash(f'Запись с ID {record_id} успешно удалена.', 'success')
+        except Exception as e:
+            # Обрабатываем возможные ошибки и выводим в лог
+            print(f"Ошибка при удалении записи с ID {record_id}: {e}")
+            flash(f'Ошибка при удалении записи с ID {record_id}.', 'error')
+
+        # Перенаправляем пользователя обратно на список записей
+        return redirect(url_for('.index_view'))
+
+    def team_sets_count(self, obj):
+        """
+        Возвращает количество составов команды для данной записи Team.
+        """
+        return len(obj.team_sets)
+
+    column_formatters = {
+        'team_sets_count': lambda view, context, model, name: view.team_sets_count(model)
+    }
+
+    def __init__(self, model, session, **kwargs):
+        super(TeamAdmin, self).__init__(model, session, **kwargs)
+
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/modules/admin/user_views.py ---
+# app/modules/admin/user_views.py
+"""
+Настройки административной панели для управления пользователями.
+
+Этот модуль содержит класс UserAdmin, который используется для настройки
+административной панели Flask-Admin для модели пользователей. Класс
+определяет отображение, редактирование и валидацию данных пользователей
+в административной панели.
+"""
+
+from app.modules.admin.views import MyModelView
+from wtforms import StringField, SelectField, PasswordField
+from wtforms.validators import DataRequired, Email, Length, EqualTo
+from flask_admin.form import Select2Widget
+from werkzeug.security import generate_password_hash
+
+
+class UserAdmin(MyModelView):
+    """
+    Класс для управления пользователями через Flask-Admin.
+    """
+
+    # Определяем, какие поля показывать в административной панели
+    # list_template = 'admin/list.html'
+    page_size = 100
+    action_disallowed_list = ['delete', ]
+    can_view_details = True  # show a modal dialog with records details
+
+    column_list = ('id', 'user_name', 'user_email', 'role')
+    column_searchable_list = ('user_name', 'user_email')
+    column_sortable_list = ('id', 'user_name', 'user_email', 'role')
+    form_columns = ('user_name', 'user_email', 'role')  # Пароль не указываем в модели
+    column_labels = {
+        'id': 'ID',
+        'user_name': 'Имя пользователя',
+        'user_email': 'Email',
+        'role': 'Роль',
+    }
+
+    def create_form(self, obj=None):
+        """
+        Переопределяем метод создания формы для создания нового пользователя.
+        """
+        form = super(UserAdmin, self).create_form(obj)
+
+        # Пример предустановки ролей
+        form.role.choices = [('admin', 'Администратор'), ('user', 'Пользователь')]
+
+        return form
+
+    def edit_form(self, obj):
+        """
+        Переопределяем метод для редактирования формы пользователя.
+        """
+        form = super(UserAdmin, self).edit_form(obj)
+
+        # Пример предустановки ролей
+        form.role.choices = [('admin', 'Администратор'), ('user', 'Пользователь')]
+
+        # Нет необходимости устанавливать form.role.data здесь, так как это автоматически устанавливается Flask-Admin
+
+        return form
+
+    def scaffold_form(self):
+        """
+        Создает форму для модели User с учетом дополнительных настроек.
+        """
+        form_class = super(UserAdmin, self).scaffold_form()
+
+        # Поле для имени пользователя
+        form_class.user_name = StringField('Имя пользователя', validators=[
+            DataRequired(),
+            Length(min=1, max=255)
+        ])
+
+        # Поле для Email
+        form_class.user_email = StringField('Email', validators=[
+            DataRequired(),
+            Email(),
+            Length(min=1, max=255)
+        ])
+
+        # Поле для выбора роли пользователя
+        form_class.role = SelectField('Роль', widget=Select2Widget(), coerce=str)
+
+        # Поля для ввода пароля и его подтверждения, но они не привязаны к модели напрямую
+        form_class.password = PasswordField('Пароль', validators=[
+            Length(min=3, max=16)
+        ])
+
+        form_class.confirm_password = PasswordField('Подтверждение пароля', validators=[
+            EqualTo('password', message='Пароли должны совпадать')
+        ])
+
+        return form_class
+
+    def on_model_change(self, form, model, is_created):
+        """
+        Переопределяем метод для хеширования пароля перед сохранением в базу и сохранения роли.
+        """
+        if form.password.data:
+            # Если введен новый пароль, хешируем его и сохраняем
+            model.password_hash = generate_password_hash(form.password.data)
+
+        # Явно сохраняем роль пользователя
+        if form.role.data:
+            model.role = form.role.data
+
+        return super(UserAdmin, self).on_model_change(form, model, is_created)
+
+    def is_visible(self):
+        # Скрываем из навигации
+        return False
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/modules/admin/__init__.py ---
+# app/modules/admin/__init__.py
+"""
+This is the configuration package. It contains the configuration files for the application.
+"""
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/modules/admin/views.py ---
+# app/modules/admin/views.py
+"""
+Модуль с пользовательскими классами для административной панели.
+
+Используется для организации и управления маршрутами (routes) и обработчиками запросов, связанными с этим модулем.
+"""
+from flask import redirect, request, url_for, flash, render_template
+from flask_login import current_user
+from flask_admin.contrib.sqla import ModelView
+from flask_admin import AdminIndexView, expose
+from sqlalchemy.orm import class_mapper
+from sqlalchemy.orm.exc import NoResultFound
+from sqlalchemy.exc import IntegrityError
+from app import db
+
+
+class MyModelView(ModelView):
+    """
+        Класс для управления моделями через Flask-Admin.
+
+        Этот класс настраивает доступ к страницам управления моделями в административной панели.
+        Доступ разрешен только авторизованным пользователям с ролью 'admin'.
+
+        Методы:
+            is_accessible() -> bool:
+                Проверяет, доступен ли данный интерфейс для текущего пользователя.
+
+            inaccessible_callback(name: str, **kwargs):
+                Перенаправляет на страницу входа, если доступ к панели запрещен.
+        """
+
+    # page_size = 100
+    # action_disallowed_list = ['delete', ]
+    # can_view_details = True  # show a modal dialog with records details
+
+    def is_accessible(self):
+        """
+        Определяет, доступен ли данный интерфейс для текущего пользователя.
+
+        Доступ разрешен только авторизованным пользователям с ролью 'admin'.
+
+        :return: True, если пользователь авторизован и имеет роль 'admin', иначе False.
+        :rtype: bool
+        """
+        if current_user.is_authenticated and current_user.role == 'admin':
+            return True
+        flash('Доступ в админку разрешен только администраторам!', 'danger')
+        return False
+
+    def inaccessible_callback(self, name, **kwargs):
+        """
+        Перенаправляет пользователя на страницу входа, если доступ запрещен.
+
+        :param name: Имя вызванного действия.
+        :type name: str
+        :param kwargs: Дополнительные параметры.
+        :return: Перенаправление на страницу входа.
+        :rtype: werkzeug.wrappers.Response
+        """
+        return redirect(url_for('login.login', next=request.path))
+
+    def is_action_allowed(self, name):
+        """
+        Проверяет, разрешены ли массовые действия (bulk actions). В данном случае все массовые действия отключены.
+
+        :param name: Имя действия.
+        :return: False, поскольку массовые действия не поддерживаются.
+        :rtype: bool
+        """
+        return False
+
+    def has_related_records(self, model):
+        """
+        Универсальная функция для проверки наличия связанных записей в других таблицах.
+        Возвращает True, если есть хотя бы один объект, связанный с этой записью.
+        """
+        mapper = class_mapper(model.__class__)
+
+        for relationship in mapper.relationships:
+            # Получаем класс, связанный с моделью через отношение
+            related_class = relationship.mapper.class_
+
+            # Получаем поле внешнего ключа (из множества выбираем первый элемент)
+            primary_key = getattr(model, next(iter(relationship.local_columns)).key)
+
+            # Проверяем наличие связанных записей по внешнему ключу
+            related_query = db.session.query(related_class).filter(
+                getattr(related_class, next(iter(relationship.remote_side)).key) == primary_key
+            ).first()
+
+            # Если найдена хотя бы одна связанная запись, возвращаем True
+            if related_query:
+                return True
+
+        return False
+
+    def delete_model(self, model):
+        """
+        Метод удаления записи с проверкой на наличие связанных объектов.
+        """
+        try:
+            if self.has_related_records(model):
+                flash('Удаление запрещено: запись имеет связанные объекты!', 'error')
+                return False  # Блокируем удаление, если есть связанные объекты
+
+            return super(MyModelView, self).delete_model(model)
+        except IntegrityError:
+            db.session.rollback()
+            flash('Ошибка при удалении записи. Пожалуйста, попробуйте снова.', 'error')
+            return False
+
+    @expose('/delete/', methods=['POST'])
+    def delete_view(self):
+        """
+        Переопределение метода удаления записи через интерфейс админки Flask-Admin.
+        """
+        return super(MyModelView, self).delete_view()
+
+
+class MyAdminIndexView(AdminIndexView):
+    """
+        Класс для настройки главной страницы административной панели.
+
+        Этот класс управляет доступом к главной странице панели Flask-Admin.
+        Доступ разрешен только авторизованным пользователям с ролью 'admin'.
+
+        Методы:
+            is_accessible() -> bool:
+                Проверяет, доступен ли данный интерфейс для текущего пользователя.
+
+            inaccessible_callback(name: str, **kwargs):
+                Перенаправляет на страницу входа, если доступ к панели запрещен.
+        """
+
+    def is_accessible(self):
+        """
+        Определяет, доступен ли данный интерфейс для текущего пользователя.
+
+        Доступ разрешен только авторизованным пользователям с ролью 'admin'.
+
+        :return: True, если пользователь авторизован и имеет роль 'admin', иначе False.
+        :rtype: bool
+        """
+        if current_user.is_authenticated and current_user.role == 'admin':
+            return True
+        flash('Доступ в админку разрешен только администраторам!', 'danger')
+        return False
+
+    def inaccessible_callback(self, name, **kwargs):
+        """
+        Перенаправляет пользователя на страницу входа, если доступ запрещен.
+
+        :param name: Имя вызванного действия.
+        :type name: str
+        :param kwargs: Дополнительные параметры.
+        :return: Перенаправление на страницу входа.
+        :rtype: werkzeug.wrappers.Response
+        """
+        return redirect(url_for('login.login', next=request.path))
+
+    @expose('/')
+    def index(self):
+        """
+        Кастомная главная страница для административной панели.
+        Отображает ссылки на справочники.
+        """
+        return self.render('admin/index.html')
+
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/modules/user/models.py ---
+# app/modules/team_set/models.py
+"""
+Модуль для определения модели данных User в приложении Flask.
+
+Этот модуль содержит модель пользователя, которая используется для
+хранения и управления информацией о пользователях, включая их имя,
+электронную почту, хэшированный пароль и роль. Модель интегрирована
+с Flask-Login для обеспечения функций аутентификации.
+"""
+
+from flask_login import UserMixin
+from werkzeug.security import generate_password_hash, check_password_hash
+
+from app.db import db
+
+
+class User(db.Model, UserMixin):
+    __tablename__ = 'user'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_name = db.Column(db.String(255), nullable=False)
+    user_email = db.Column(db.String(255), nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
+    role = db.Column(db.String(255), nullable=False)
+
+    def set_password(self, password):
+        """
+        Устанавливает хэшированный пароль пользователя.
+
+        :param str password: Пароль, который необходимо захэшировать и сохранить.
+        """
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        """
+        Проверяет пароль пользователя на соответствие хешу.
+
+        :param str password: Пароль для проверки.
+        :return: Возвращает True, если пароль корректен, иначе False.
+        :rtype: bool
+        """
+        return check_password_hash(self.password_hash, password)
+
+    def __repr__(self):
+        return f"<User(id={self.id}, user_name={self.user_name})>"
+
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/modules/user/__init__.py ---
+# app/modules/user/__init__.py
+"""
+This is the configuration package. It contains the configuration files for the application.
+"""
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/modules/user/views.py ---
+# app/modules/user/views.py
+"""
+Модуль с пользовательскими классами для страницы пользователей.
+
+Используется для организации и управления маршрутами (routes) и обработчиками запросов, связанными с этим модулем.
+"""
+from flask import Blueprint, render_template
+
+blueprint = Blueprint('user', __name__, url_prefix='/user')
+
+
+@blueprint.route('/')
+def user():
+    title = 'User'
+    return render_template('member/user/index.html', title=title)
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/modules/profile/__init__.py ---
+# app/modules/profile/__init__.py
+"""
+This is the configuration package. It contains the configuration files for the application.
+"""
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/modules/profile/views.py ---
+# app/modules/profile/views.py
+"""
+Модуль с пользовательскими классами для страницы профиля пользователя.
+
+После авторизации пользователя перенаправляем на страницу профиля.
+Используется для организации и управления маршрутами (routes) и обработчиками запросов, связанными с этим модулем.
+"""
+from flask import Blueprint, render_template
+from flask_login import login_required
+
+# Создаем Blueprint для модуля profile с префиксом '/profile'
+blueprint = Blueprint('profile', __name__, url_prefix='/profile')
+
+
+@blueprint.route('/')
+@login_required
+def profile():
+    """
+    Страница профиля пользователя.
+
+    Этот маршрут отображает основную информацию о профиле текущего
+    аутентифицированного пользователя.
+
+    :return: HTML-код страницы профиля пользователя.
+    :rtype: str
+    """
+    title = 'Профиль'
+    return render_template('member/profile.html', title=title)
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/modules/team/models.py ---
+# app/modules/team/models.py
+"""
+Модуль для определения модели данных Team в приложении Flask.
+
+Этот модуль содержит класс Team, который представляет собой модель данных для хранения информации
+о командах в базе данных. Модель используется для управления командами в проекте и связи
+с составами команд, определенными в модели TeamSet.
+
+Attributes:
+    id (int): Уникальный идентификатор команды.
+    team_name (str): Название команды.
+
+Определение отношений:
+    team_sets (relationship): Связь "один ко многим" с моделью TeamSet. Определяет все записи TeamSet,
+                              связанные с данной командой. Это отношение позволяет легко получить доступ
+                              ко всем составам команды.
+"""
+from app.db import db
+
+
+class Team(db.Model):
+    __tablename__ = 'team'
+
+    id = db.Column(db.Integer, primary_key=True)
+    team_name = db.Column(db.String, nullable=False)
+
+    # Отношение "один ко многим" между Team и TeamSet.
+    # back_populates указываем в единственном числе.
+    # Это отношение позволяет получить доступ ко всем записям TeamSet, связанным с данной командой (Team).
+    team_sets = db.relationship('TeamSet', back_populates='team', lazy='select')
+
+    def __repr__(self):
+        return f"<Team(id={self.id}, team_name={self.team_name})>"
+
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/modules/team/__init__.py ---
+# app/modules/team/__init__.py
+"""
+This is the configuration package. It contains the configuration files for the application.
+"""
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/modules/team/views.py ---
+# app/modules/team/views.py
+"""
+Модуль с пользовательскими классами для страницы с командами.
+
+Используется для организации и управления маршрутами (routes) и обработчиками запросов, связанными с этим модулем.
+"""
+from flask import Blueprint, render_template
+
+blueprint = Blueprint('team', __name__, url_prefix='/team')
+
+
+@blueprint.route('/')
+def team():
+    title = 'team'
+    return render_template('member/team/index.html', title=title)
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/modules/index/__init__.py ---
+# app/modules/index/__init__.py
+"""
+This is the configuration package. It contains the configuration files for the application.
+"""
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/modules/index/views.py ---
+# app/modules/index/views.py
+"""
+Модуль с пользовательскими классами для главной страницы приложения.
+
+Главная страница не спрятана за авторизацию и доступна всем пользователям.
+Используется для организации и управления маршрутами (routes) и обработчиками запросов, связанными с этим модулем.
+"""
+from flask import Blueprint, render_template
+
+# Создаем Blueprint для модуля index с префиксом '/index'
+blueprint = Blueprint('index', __name__, url_prefix='/index')
+
+
+@blueprint.route('/')
+def index():
+    """
+    Главная страница приложения.
+
+    Этот маршрут отображает главную страницу приложения и доступен
+    как для авторизованных, так и для неавторизованных пользователей.
+
+    :return: Сгенерированный HTML-код главной страницы.
+    :rtype: str
+    """
+    title = 'Главная'
+    return render_template('member/index.html', title=title)
+
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/modules/staff/models.py ---
+# app/modules/staff/models.py
+"""
+Модуль для определения модели данных Staff в приложении Flask.
+
+Этот модуль содержит класс Staff, который представляет собой модель данных для хранения информации
+о сотрудниках в базе данных. Модель используется для управления сотрудниками в проекте и связи
+с составами команд, определенными в модели TeamSet.
+
+Attributes:
+    id (int): Уникальный идентификатор сотрудника.
+    staff_name (str): Имя сотрудника.
+    staff_date (Date): Дата, связанная с сотрудником (например, дата начала работы).
+    staff_datetime (DateTime): Дата и время, связанные с сотрудником (например, время последнего входа).
+    staff_active (bool): Статус активности сотрудника - еще работает или уже нет.
+
+Определение отношений:
+    team_sets (relationship): Связь "один ко многим" с моделью TeamSet. Определяет все записи TeamSet,
+                              связанные с данным сотрудником. Это отношение позволяет легко получить доступ
+                              ко всем командам, в которых участвует сотрудник.
+"""
+from app.db import db
+
+
+class Staff(db.Model):
+    __tablename__ = 'staff'
+
+    id = db.Column(db.Integer, primary_key=True)
+    staff_name = db.Column(db.String, nullable=False)
+    staff_date = db.Column(db.Date, nullable=False)
+    staff_datetime = db.Column(db.DateTime)
+    staff_active = db.Column(db.Boolean, nullable=False)
+
+    # Отношение "один ко многим" между Staff и TeamSet.
+    # back_populates указываем в единственном числе.
+    # Это отношение позволяет получить доступ ко всем записям TeamSet, связанным с данным сотрудником (Staff).
+    team_sets = db.relationship('TeamSet', back_populates='staff', lazy='select')
+
+    def __repr__(self):
+        return f"<Staff(id={self.id}, staff_name={self.staff_name})>"
+
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/modules/staff/__init__.py ---
+# app/modules/staff/__init__.py
+"""
+This is the configuration package. It contains the configuration files for the application.
+"""
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/modules/staff/views.py ---
+# app/modules/staff/views.py
+"""
+Модуль с пользовательскими классами для страницы с сотрудниками компании.
+
+Используется для организации и управления маршрутами (routes) и обработчиками запросов, связанными с этим модулем.
+"""
+from flask import Blueprint, render_template
+
+blueprint = Blueprint('staff', __name__, url_prefix='/staff')
+
+
+@blueprint.route('/')
+def staff():
+    title = 'Staff'
+    return render_template('member/staff/index.html', title=title)
+
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/modules/error/__init__.py ---
+# app/modules/error/__init__.py
+"""
+This is the configuration package. It contains the configuration files for the application.
+"""
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/modules/error/views.py ---
+# app/modules/error/views.py
+"""
+Модуль с пользовательскими классами для ошибочных страниц.
+
+Используется для организации и управления маршрутами (routes) и обработчиками запросов, связанными с этим модулем.
+"""
+from flask import Blueprint, render_template, request
+
+# Создаем Blueprint для модуля error с префиксом '/error'
+blueprint = Blueprint('error', __name__, url_prefix='/error')
+
+
+def register_error_handlers(app):
+    """
+    Функция для регистрации обработчиков ошибок.
+
+    :param app: Экземпляр Flask-приложения.
+    :type app: Flask
+    """
+
+    @app.errorhandler(404)
+    def page_not_found(e):
+        """
+        Обработчик ошибки 404 - Not Found.
+        Этот код ошибки возникает, когда пользователь запрашивает несуществующий маршрут.
+
+        :param e: Ошибка 404.
+        :type e: Exception
+
+        :return: Сгенерированный HTML-код страницы ошибки 404.
+        :rtype: tuple (str, int)
+        """
+        app.logger.error(f'Ошибка 404: {request.url} не найдена')
+        return render_template('member/errors.html', error_type=404, error_message="Page not found"), 404
+
+    @app.errorhandler(500)
+    def internal_server_error(e):
+        """
+        Обработчик ошибки 500 - Internal Server Error.
+        Этот код ошибки указывает на проблемы на сервере, которые мешают обработке запроса.
+
+        :param e: Ошибка 500.
+        :type e: Exception
+
+        :return: Сгенерированный HTML-код страницы ошибки 500.
+        :rtype: tuple (str, int)
+        """
+        app.logger.error(f'Ошибка 500: {request.url}')
+        return render_template('member/errors.html', error_type=500, error_message="Internal server error"), 500
+
+    @app.errorhandler(400)
+    def bad_request_error(e):
+        """
+        Обработчик ошибки 400 - Bad Request.
+        Этот код ошибки указывает на некорректный запрос от клиента.
+
+        :param e: Ошибка 400.
+        :type e: Exception
+
+        :return: Сгенерированный HTML-код страницы ошибки 400.
+        :rtype: tuple (str, int)
+        """
+        app.logger.error(f'Ошибка 400: Некорректный запрос на {request.url}')
+        return render_template('member/errors.html', error_type=400, error_message="Bad Request"), 400
+
+    @app.errorhandler(401)
+    def unauthorized_error(e):
+        """
+        Обработчик ошибки 401 - Unauthorized.
+        Этот код ошибки указывает, что для доступа к ресурсу требуется авторизация.
+
+        :param e: Ошибка 401.
+        :type e: Exception
+
+        :return: Сгенерированный HTML-код страницы ошибки 401.
+        :rtype: tuple (str, int)
+        """
+        app.logger.error(f'Ошибка 401: Неавторизованный доступ на {request.url}')
+        return render_template('member/errors.html', error_type=401, error_message="Unauthorized"), 401
+
+    @app.errorhandler(403)
+    def forbidden_error(e):
+        """
+        Обработчик ошибки 403 - Forbidden.
+        Этот код ошибки указывает, что доступ к запрашиваемому ресурсу запрещен.
+
+        :param e: Ошибка 403.
+        :type e: Exception
+
+        :return: Сгенерированный HTML-код страницы ошибки 403.
+        :rtype: tuple (str, int)
+        """
+        app.logger.error(f'Ошибка 403: Доступ запрещен на {request.url}')
+        return render_template('member/errors.html', error_type=403, error_message="Forbidden"), 403
+
+    @app.errorhandler(405)
+    def method_not_allowed_error(e):
+        """
+        Обработчик ошибки 405 - Method Not Allowed.
+        Этот код ошибки указывает, что метод HTTP не поддерживается на данном ресурсе.
+
+        :param e: Ошибка 405.
+        :type e: Exception
+
+        :return: Сгенерированный HTML-код страницы ошибки 405.
+        :rtype: tuple (str, int)
+        """
+        app.logger.error(f'Ошибка 405: Метод не разрешен на {request.url}')
+        return render_template('member/errors.html', error_type=405, error_message="Method Not Allowed"), 405
+
+    @app.errorhandler(409)
+    def conflict_error(e):
+        """
+        Обработчик ошибки 409 - Conflict.
+        Этот код ошибки указывает на конфликт запроса с текущим состоянием ресурса.
+
+        :param e: Ошибка 409.
+        :type e: Exception
+
+        :return: Сгенерированный HTML-код страницы ошибки 409.
+        :rtype: tuple (str, int)
+        """
+        app.logger.error(f'Ошибка 409: Конфликт на {request.url}')
+        return render_template('member/errors.html', error_type=409, error_message="Conflict"), 409
+
+    @app.errorhandler(422)
+    def unprocessable_entity_error(e):
+        """
+        Обработчик ошибки 422 - Unprocessable Entity.
+        Этот код ошибки указывает, что сервер понимает запрос, но не может его обработать.
+
+        :param e: Ошибка 422.
+        :type e: Exception
+
+        :return: Сгенерированный HTML-код страницы ошибки 422.
+        :rtype: tuple (str, int)
+        """
+        app.logger.error(f'Ошибка 422: Необрабатываемый запрос на {request.url}')
+        return render_template('member/errors.html', error_type=422, error_message="Unprocessable Entity"), 422
+
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/modules/login/__init__.py ---
+# app/modules/login/__init__.py
+"""
+This is the configuration package. It contains the configuration files for the application.
+"""
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/modules/login/forms.py ---
+# app/modules/login/forms.py
+"""
+Формы для модуля авторизации.
+
+Этот модуль содержит форму для авторизации пользователя в системе.
+Форма включает в себя поля для ввода адреса электронной почты, пароля,
+а также опцию "Запомнить меня".
+"""
+
+from flask_wtf import FlaskForm
+from wtforms import StringField, PasswordField, BooleanField, SubmitField
+from wtforms.validators import DataRequired, Email
+
+
+class LoginForm(FlaskForm):
+    """
+    Форма для авторизации пользователя в систему.
+
+    :param email: Поле для ввода адреса электронной почты.
+    :type email: StringField
+    :param password: Поле для ввода пароля.
+    :type password: PasswordField
+    :param remember_me: Поле для выбора опции "Запомнить меня".
+    :type remember_me: BooleanField
+    :param submit: Кнопка для отправки формы.
+    :type submit: SubmitField
+    """
+    email = StringField(
+        'Почта: ',
+        validators=[DataRequired(), Email(message="Введите корректный email-адрес.")],
+        render_kw={'class': 'form-control', 'id': 'email', 'type': 'email'},
+    )
+    password = PasswordField(
+        'Пароль: ',
+        validators=[DataRequired(message="Поле пароля обязательно для заполнения.")],
+        render_kw={'class': 'form-control', 'type': 'password', 'id': 'password'},
+    )
+    remember_me = BooleanField(
+        'Запомнить меня',
+        default=True,
+        render_kw={'class': 'form-check-input', 'type': 'checkbox'}
+    )
+    submit = SubmitField(
+        'Войти',
+        render_kw={'class': 'btn btn-primary'},
+    )
+
+
+--- /Users/ivan/Desktop/PyFlask/fad/app/modules/login/views.py ---
+# app/modules/login/views.py
+"""
+Маршруты и обработчики запросов для модуля авторизации.
+
+Этот модуль содержит маршруты для входа и выхода пользователя из системы.
+Функция входа проверяет учетные данные пользователя и аутентифицирует его.
+Функция выхода завершает сессию пользователя.
+"""
+from flask import Blueprint, flash, redirect, render_template, request, url_for, current_app
+from flask_login import current_user, login_user, logout_user, login_required
+
+from app.modules.login.forms import LoginForm
+from app.modules.user.models import User
+
+# Создаем Blueprint для модуля login с префиксом '/login'
+blueprint = Blueprint('login', __name__, url_prefix='/login')
+
+
+@blueprint.route('/', methods=['GET', 'POST'])
+def login():
+    """
+    Обрабатывает запросы на авторизацию пользователя.
+
+    Если пользователь уже аутентифицирован, его перенаправляют на главную страницу.
+    Если авторизация прошла успешно, пользователя перенаправляют на страницу профиля.
+    В случае неудачной попытки входа выводится сообщение об ошибке.
+
+    :return: Сгенерированный HTML-код страницы авторизации или редирект на другую страницу.
+    :rtype: str
+    """
+    if current_user.is_authenticated:
+        current_app.logger.info('Пользователь уже авторизованы')
+        flash('Пользователь уже авторизованы!', 'info')
+        return redirect(url_for('index.index'))
+
+    form = LoginForm()
+
+    if form.validate_on_submit():
+        user = User.query.filter_by(user_email=form.email.data).first()
+        if user is None or not user.check_password(form.password.data):
+            # Логирование неудачной попытки входа
+            current_app.logger.warning('Неудачная попытка входа: неправильный логин или пароль')
+            flash('Не корректный логин или пароль!', 'danger')
+            return redirect(url_for('login.login'))
+
+        login_user(user, remember=form.remember_me.data)
+
+        # Логирование успешной авторизации
+        current_app.logger.info(f'Успешная авторизация пользователя {user.user_email}')
+        flash('Вы успешно вошли в систему!', 'success')
+        return redirect(url_for('profile.profile'))
+
+    # Обработка ошибок валидации формы
+    if form.errors:
+        for field, errors in form.errors.items():
+            for error in errors:
+                flash(f"Ошибка в поле {getattr(form, field).label.text}: {error}", 'danger')
+
+    return render_template('member/login.html', title='Авторизация', form=form)
+
+
+@blueprint.route('/logout')
+@login_required
+def logout():
+    """
+    Обрабатывает выход пользователя из системы.
+
+    Завершает текущую сессию пользователя и перенаправляет его на главную страницу.
+
+    :return: Перенаправление на главную страницу.
+    :rtype: werkzeug.wrappers.Response
+    """
+    current_app.logger.info(f'Пользователь {current_user.user_email} вышел из системы')
+    logout_user()
+    return redirect(url_for('index.index'))
+
