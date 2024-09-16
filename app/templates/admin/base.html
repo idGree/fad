@@ -14,85 +14,56 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/flatpickr.min.css') }}">
     <script src="{{ url_for('static', filename='js/flatpickr.min.js') }}"></script>
-    <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/airbnb.css">
-
 
     <link rel="stylesheet" href="{{ url_for('static', filename='css/select2.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='font/font-awesome/css/font-awesome.min.css') }}">
 
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/logo.svg') }}">
+
     <style>
-        /* Общие стили для всех иконок внутри ссылок и кнопок */
-        .icon {
-            font-size: 0; /* Убираем текстовое пространство, если иконки находятся в inline-элементах */
+        /* Общие стили для контейнеров ссылок и кнопок с иконками */
+        a.icon, form.icon {
+            display: inline-block; /* Отображение в один ряд */
             margin: 0;
             padding: 0;
-            display: inline-block;
+            vertical-align: middle; /* Вертикальное выравнивание */
         }
 
-        /* Общие стили для всех иконок */
-        .fa-pencil, .fa-trash, .fa-times, .fa-chevron-up, .fa-chevron-down, .fa-eye {
-            width: 24px;
-            height: 24px;
-            background-size: cover;
-            display: inline-block;
-            margin: 0 0px; /* Одинаковые отступы между иконками */
-            vertical-align: middle; /* Вертикальное выравнивание по центру */
-        }
-
-        /* Стили для ссылок, кнопок и форм, чтобы убрать отступы */
-        a.icon, button.icon, form.icon {
-            border: none;
+        /* Убираем отступы и обводку у кнопки в форме */
+        form.icon button {
+            border: none; /* Убираем обводку */
+            background: none; /* Убираем фон */
             padding: 0;
             margin: 0;
-            background: none;
             display: inline-block;
+            vertical-align: middle;
         }
 
-        /* Индивидуальные стили для каждой иконки */
-        .fa-pencil {
-            background: url('{{ url_for("static", filename="img/edit.svg") }}') no-repeat center center;
-            filter: invert(27%) sepia(99%) saturate(4018%) hue-rotate(203deg) brightness(91%) contrast(99%);
-        }
-
-        .fa-trash {
-            background: url('{{ url_for("static", filename="img/trash.svg") }}') no-repeat center center;
-            filter: invert(19%) sepia(90%) saturate(7466%) hue-rotate(356deg) brightness(99%) contrast(88%);
-        }
-
-        .fa-times {
-            background: url('{{ url_for("static", filename="img/x.svg") }}') no-repeat center center;
-            filter: invert(19%) sepia(90%) saturate(7466%) hue-rotate(356deg) brightness(99%) contrast(88%);
-        }
-
-        .fa-chevron-up {
-            background: url('{{ url_for("static", filename="img/chevron-up.svg") }}') no-repeat center center;
-            filter: invert(19%) sepia(90%) saturate(7466%) hue-rotate(356deg) brightness(99%) contrast(88%);
-        }
-
-        .fa-chevron-down {
-            background: url('{{ url_for("static", filename="img/chevron-down.svg") }}') no-repeat center center;
-            filter: invert(19%) sepia(90%) saturate(7466%) hue-rotate(356deg) brightness(99%) contrast(88%);
-        }
-
-        .fa-eye {
-            background: url('{{ url_for("static", filename="img/eye.svg") }}') no-repeat center center;
-            filter: invert(54%) sepia(79%) saturate(1441%) hue-rotate(79deg) brightness(90%) contrast(88%);
+        /* Стили для иконок внутри span */
+        a.icon span, form.icon span {
+            font-size: 16px; /* Размер иконок */
+            width: 16px;
+            height: 16px;
+            line-height: 16px; /* Центрируем иконки по высоте */
+            margin: 0 1px; /* Отступы между иконками */
+            display: inline-block;
+            vertical-align: middle; /* Выравнивание иконок по центру строки */
+            color: inherit; /* Наследуем цвет от родителя */
         }
 
         /* Ховер-эффект для всех иконок */
-        .fa-pencil:hover, .fa-trash:hover, .fa-times:hover, .fa-chevron-down:hover, .fa-chevron-up:hover, .fa-eye:hover {
-            filter: brightness(0) saturate(100%);
+        a.icon:hover span, form.icon button:hover span {
+            color: #007bff; /* Изменение цвета при наведении */
         }
 
-        /* Кнопки и иконки в ячейках таблицы */
+        /* Центрирование кнопок и иконок в ячейках таблицы */
         td.list-buttons-column {
-            padding: 0; /* Убираем все внутренние отступы у ячейки */
-            text-align: center;
-            white-space: nowrap; /* Не переносить элементы на новую строку */
+            padding: 0; /* Убираем отступы в ячейке */
+            text-align: center; /* Выравнивание по центру */
+            vertical-align: middle; /* Центрирование содержимого по вертикали */
+            white-space: nowrap; /* Предотвращаем перенос элементов на следующую строку */
         }
-
-
     </style>
 </head>
 <body class="d-flex flex-column h-100">
@@ -213,9 +184,6 @@
             });
         });
     </script>
-
-
-
 
 {% endblock %}
 </body>

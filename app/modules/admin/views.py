@@ -4,10 +4,12 @@
 
 Используется для организации и управления маршрутами (routes) и обработчиками запросов, связанными с этим модулем.
 """
-from flask import redirect, request, url_for, flash, render_template
+from flask import redirect, request, url_for, flash, render_template, current_app
 from flask_login import current_user
 from flask_admin.contrib.sqla import ModelView
 from flask_admin import AdminIndexView, expose
+from sqlalchemy.exc import IntegrityError
+from utils.logging import log_and_flash
 
 
 class MyModelView(ModelView):
@@ -40,7 +42,8 @@ class MyModelView(ModelView):
         """
         if current_user.is_authenticated and current_user.role == 'admin':
             return True
-        flash('Доступ в админку разрешен только администраторам!', 'danger')
+        log_and_flash('Доступ к разделам админки вам запрещен!', 'danger')
+
         return False
 
     def inaccessible_callback(self, name, **kwargs):
@@ -92,7 +95,7 @@ class MyAdminIndexView(AdminIndexView):
         """
         if current_user.is_authenticated and current_user.role == 'admin':
             return True
-        flash('Доступ в админку разрешен только администраторам!', 'danger')
+        log_and_flash('Доступ в админку вам запрещен!', 'danger')
         return False
 
     def inaccessible_callback(self, name, **kwargs):

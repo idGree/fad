@@ -18,7 +18,7 @@ from flask_wtf import CSRFProtect
 # Локальные импорты
 from app.db import db
 from app.config.development import DevelopmentConfig
-from utils.logging import configure_logging
+from utils.logging import configure_logging, log_and_flash
 
 # Импортируем функцию для регистрации обработчиков ошибок
 from app.modules.error.views import register_error_handlers
@@ -46,6 +46,7 @@ from app.modules.team_set.views import blueprint as team_set_bp
 from app.modules.error.views import blueprint as error_bp
 
 csrf = CSRFProtect()
+
 
 
 def create_app(config_class=DevelopmentConfig):
@@ -78,8 +79,19 @@ def create_app(config_class=DevelopmentConfig):
     login_manager = LoginManager()
     login_manager.init_app(app)
     login_manager.login_view = 'login.login'
-    login_manager.login_message = 'Доступ в админку разрешен только авторизованным пользователям!'
-    login_manager.login_message_category = 'danger'
+
+    # Отключаем стандартное сообщение о доступе
+    login_manager.login_message = None
+    # login_manager.login_message = 'Доступ в личный кабинет разрешен только авторизованным пользователям!'
+    # login_manager.login_message_category = 'danger'
+
+    @login_manager.unauthorized_handler
+    def handle_unauthorized():
+        """
+        Обрабатывает неавторизованные попытки доступа и выводит кастомное сообщение через log_and_flash.
+        """
+        log_and_flash('Доступ в личный кабинет разрешен только авторизованным пользователям!', 'danger')
+        return redirect(url_for('login.login', next=request.url))
 
     # Настройка загрузчика пользователя для Flask-Login.
     @login_manager.user_loader

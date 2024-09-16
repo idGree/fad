@@ -12,6 +12,8 @@ from flask_login import current_user, login_user, logout_user, login_required
 from app.modules.login.forms import LoginForm
 from app.modules.user.models import User
 
+from utils.logging import log_and_flash
+
 # Создаем Blueprint для модуля login с префиксом '/login'
 blueprint = Blueprint('login', __name__, url_prefix='/login')
 
@@ -28,9 +30,8 @@ def login():
     :return: Сгенерированный HTML-код страницы авторизации или редирект на другую страницу.
     :rtype: str
     """
-    if current_user.is_authenticated:
-        current_app.logger.info('Пользователь уже авторизованы')
-        flash('Пользователь уже авторизованы!', 'info')
+    if current_user.is_authenticated and current_user == 'user':
+        log_and_flash('Пользователь уже авторизован!', 'warning')
         return redirect(url_for('index.index'))
 
     form = LoginForm()
@@ -39,22 +40,20 @@ def login():
         user = User.query.filter_by(user_email=form.email.data).first()
         if user is None or not user.check_password(form.password.data):
             # Логирование неудачной попытки входа
-            current_app.logger.warning('Неудачная попытка входа: неправильный логин или пароль')
-            flash('Не корректный логин или пароль!', 'danger')
+            log_and_flash('Неудачная попытка входа: неправильный логин или пароль!', 'danger')
             return redirect(url_for('login.login'))
 
         login_user(user, remember=form.remember_me.data)
 
         # Логирование успешной авторизации
-        current_app.logger.info(f'Успешная авторизация пользователя {user.user_email}')
-        flash('Вы успешно вошли в систему!', 'success')
+        log_and_flash(f'Пользователь {user.user_email} успешно авторизовался!', 'success')
         return redirect(url_for('profile.profile'))
 
     # Обработка ошибок валидации формы
     if form.errors:
         for field, errors in form.errors.items():
             for error in errors:
-                flash(f"Ошибка в поле {getattr(form, field).label.text}: {error}", 'danger')
+                log_and_flash(f"Ошибка в поле {getattr(form, field).label.text}: {error}", 'danger')
 
     return render_template('member/login.html', title='Авторизация', form=form)
 
@@ -70,6 +69,7 @@ def logout():
     :return: Перенаправление на главную страницу.
     :rtype: werkzeug.wrappers.Response
     """
-    current_app.logger.info(f'Пользователь {current_user.user_email} вышел из системы')
+    # current_app.logger.info(f'Пользователь {current_user.user_email} вышел из системы')
+    log_and_flash(f'Пользователь {current_user.user_email} вышел из системы', 'warning')
     logout_user()
     return redirect(url_for('index.index'))

@@ -5,6 +5,7 @@
 Используется для организации и управления маршрутами (routes) и обработчиками запросов, связанными с этим модулем.
 """
 from flask import Blueprint, render_template, request
+from utils.logging import log_and_flash
 
 # Создаем Blueprint для модуля error с префиксом '/error'
 blueprint = Blueprint('error', __name__, url_prefix='/error')
@@ -30,7 +31,8 @@ def register_error_handlers(app):
         :return: Сгенерированный HTML-код страницы ошибки 404.
         :rtype: tuple (str, int)
         """
-        app.logger.error(f'Ошибка 404: {request.url} не найдена')
+        log_and_flash(f'Ошибка 404: {request.url} не найдена', 'danger')
+
         return render_template('member/errors.html', error_type=404, error_message="Page not found"), 404
 
     @app.errorhandler(500)
@@ -45,7 +47,7 @@ def register_error_handlers(app):
         :return: Сгенерированный HTML-код страницы ошибки 500.
         :rtype: tuple (str, int)
         """
-        app.logger.error(f'Ошибка 500: {request.url}')
+        log_and_flash(f'Ошибка 500: {request.url}', 'danger')
         return render_template('member/errors.html', error_type=500, error_message="Internal server error"), 500
 
     @app.errorhandler(400)
@@ -60,7 +62,7 @@ def register_error_handlers(app):
         :return: Сгенерированный HTML-код страницы ошибки 400.
         :rtype: tuple (str, int)
         """
-        app.logger.error(f'Ошибка 400: Некорректный запрос на {request.url}')
+        log_and_flash(f'Ошибка 400: Некорректный запрос на {request.url}', 'danger')
         return render_template('member/errors.html', error_type=400, error_message="Bad Request"), 400
 
     @app.errorhandler(401)
@@ -75,7 +77,7 @@ def register_error_handlers(app):
         :return: Сгенерированный HTML-код страницы ошибки 401.
         :rtype: tuple (str, int)
         """
-        app.logger.error(f'Ошибка 401: Неавторизованный доступ на {request.url}')
+        log_and_flash(f'Ошибка 401: Неавторизованный доступ на {request.url}', 'danger')
         return render_template('member/errors.html', error_type=401, error_message="Unauthorized"), 401
 
     @app.errorhandler(403)
@@ -90,7 +92,7 @@ def register_error_handlers(app):
         :return: Сгенерированный HTML-код страницы ошибки 403.
         :rtype: tuple (str, int)
         """
-        app.logger.error(f'Ошибка 403: Доступ запрещен на {request.url}')
+        log_and_flash(f'Ошибка 403: Доступ запрещен на {request.url}', 'danger')
         return render_template('member/errors.html', error_type=403, error_message="Forbidden"), 403
 
     @app.errorhandler(405)
@@ -105,7 +107,7 @@ def register_error_handlers(app):
         :return: Сгенерированный HTML-код страницы ошибки 405.
         :rtype: tuple (str, int)
         """
-        app.logger.error(f'Ошибка 405: Метод не разрешен на {request.url}')
+        log_and_flash(f'Ошибка 405: Метод не разрешен на {request.url}', 'danger')
         return render_template('member/errors.html', error_type=405, error_message="Method Not Allowed"), 405
 
     @app.errorhandler(409)
@@ -120,7 +122,7 @@ def register_error_handlers(app):
         :return: Сгенерированный HTML-код страницы ошибки 409.
         :rtype: tuple (str, int)
         """
-        app.logger.error(f'Ошибка 409: Конфликт на {request.url}')
+        log_and_flash(f'Ошибка 409: Конфликт на {request.url}', 'danger')
         return render_template('member/errors.html', error_type=409, error_message="Conflict"), 409
 
     @app.errorhandler(422)
@@ -135,5 +137,5 @@ def register_error_handlers(app):
         :return: Сгенерированный HTML-код страницы ошибки 422.
         :rtype: tuple (str, int)
         """
-        app.logger.error(f'Ошибка 422: Необрабатываемый запрос на {request.url}')
+        log_and_flash(f'Ошибка 422: Необрабатываемый запрос на {request.url}', 'danger')
         return render_template('member/errors.html', error_type=422, error_message="Unprocessable Entity"), 422

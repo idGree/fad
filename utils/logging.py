@@ -11,7 +11,7 @@
 import logging
 import os
 
-from flask import request
+from flask import current_app, request, flash
 from flask_login import current_user
 from logging.handlers import RotatingFileHandler
 
@@ -101,3 +101,32 @@ def configure_logging(app):
     app.logger.setLevel(logging.DEBUG)
 
     app.logger.info('Flask приложение запущено')
+
+
+def log_and_flash(message, category='info'):
+    """
+    Универсальная функция для логирования и вывода flash-сообщений.
+
+    Эта функция позволяет одновременно выводить flash-сообщения для пользователя и логировать их
+    с указанием уровня логирования, соответствующего категории сообщения.
+
+    :param message: Текст сообщения, которое нужно вывести пользователю и записать в лог.
+    :type message: str
+    :param category: Категория сообщения (info, warning, error, critical и т.д.).
+    :type category: str
+    """
+    # Отправляем flash-сообщение пользователю
+    flash(message, category)
+
+    # Логируем сообщение в зависимости от категории
+    logger = current_app.logger
+    if category == 'info':
+        logger.info(message)
+    elif category == 'warning':
+        logger.warning(message)
+    elif category == 'danger':
+        logger.error(message)
+    elif category == 'critical':
+        logger.critical(message)
+    else:
+        logger.debug(message)

@@ -32,7 +32,7 @@
             <ul class="navbar-nav mr-auto">
                 {% if current_user.role == 'admin' %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin.index') }}">Админка</a>
+                        <a class="nav-link" href="{{ url_for('admin.index') }}">В админку</a>
                     </li>
                 {% endif %}
                 {% if current_user.role in ['user', 'admin'] %}

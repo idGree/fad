@@ -15,7 +15,8 @@
         </thead>
         <tbody>
         {% set directories = [
-        ('User', 'users_admin.index_view', '[user]', 'Пользователи системы для авторизации')
+        ('User', 'users_admin.index_view', '[user]', '<span class="badge badge-success">Ok</span> Пользователи системы для авторизации'),
+        ('Team', 'team_admin.index_view', '[team]', 'Team - справочник команд')
     ] %}
 
         {% for directory in directories %}

@@ -29,7 +29,10 @@ class StaffAdmin(MyModelView):
     :param model: Модель SQLAlchemy, представляющая сущность сотрудника.
     :param session: Сессия SQLAlchemy для взаимодействия с базой данных.
     """
-    can_view_details = True  # show a modal dialog with records details
+
+    # Позволяет отображать кнопку для просмотра подробностей записи.
+    # При установке значения True, рядом с каждой записью в списке появится иконка для просмотра.
+    can_view_details = True
 
     #: Список колонок, отображаемых в административной панели
     column_list = ['id', 'staff_name', 'staff_date', 'staff_datetime', 'staff_active', 'team_sets_count']
@@ -37,14 +40,11 @@ class StaffAdmin(MyModelView):
     #: Колонки, по которым можно производить поиск
     column_searchable_list = ['staff_name']
 
-    #: Колонки, по которым можно фильтровать список
-    # column_filters = ['staff_name', 'staff_date', 'staff_active']
-
     #: Сортировка по умолчанию (по ID в порядке возрастания)
     column_default_sort = ('id', True)
 
-    #: Исключаем колонку team_sets из формы
-    # form_excluded_columns = ['team_sets']
+    #: Колонки, по которым можно сортировать
+    column_sortable_list = ['id', 'staff_name', 'staff_date', 'staff_datetime', 'staff_active']
 
     #: Форматирование в колонках административной панели
     column_formatters = {
@@ -85,10 +85,21 @@ class StaffAdmin(MyModelView):
         'staff_date': 'Дата',
         'staff_datetime': 'Дата&Время',
         'staff_active': 'Активный?',
-        'team_sets_count': 'Кол-во связей'
+        'team_sets_count': 'BD Links'
     }
 
-    def team_sets_count(self, obj):
+    def __init__(self, model, session, **kwargs):
+        """
+        Инициализация административной панели для модели сотрудника.
+
+        :param model: Модель SQLAlchemy, представляющая сущность сотрудника.
+        :param session: Сессия SQLAlchemy для взаимодействия с базой данных.
+        :param kwargs: Дополнительные параметры.
+        """
+        super(StaffAdmin, self).__init__(model, session, **kwargs)
+
+    @staticmethod
+    def team_sets_count(obj):
         """
         Возвращает количество наборов команды для сотрудника.
 
@@ -148,12 +159,4 @@ class StaffAdmin(MyModelView):
         # Важно вызвать super для сохранения остальных полей
         return super(StaffAdmin, self).on_model_change(form, model, is_created)
 
-    def __init__(self, model, session, **kwargs):
-        """
-        Инициализация административной панели для модели сотрудника.
 
-        :param model: Модель SQLAlchemy, представляющая сущность сотрудника.
-        :param session: Сессия SQLAlchemy для взаимодействия с базой данных.
-        :param kwargs: Дополнительные параметры.
-        """
-        super(StaffAdmin, self).__init__(model, session, **kwargs)
