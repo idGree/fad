@@ -1,0 +1,36 @@
+{% extends 'admin/model/list.html' %}
+
+{% block model_list_table %}
+    <table class="table table-striped table-bordered table-hover">
+        <thead>
+        <tr>
+            {% for c in list_columns %}
+                <th class="sortable {{ 'sorted' if c['sortable'] else '' }}">
+                    <a href="{{ c['url'] }}">
+                        {{ c['name'] }}
+                        {% if c['sortable'] %}
+                            {# Логика отображения иконок сортировки с использованием SVG-файлов #}
+                            {% if c['is_sorted'] %}
+                                {% if c['is_sorted_desc'] %}
+                                    <img src="{{ url_for('static', filename='img/chevron-down.svg') }}" alt="sorted down" />
+                                {% else %}
+                                    <img src="{{ url_for('static', filename='img/chevron-up.svg') }}" alt="sorted up" />
+                                {% endif %}
+                            {% endif %}
+                        {% endif %}
+                    </a>
+                </th>
+            {% endfor %}
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in list_data %}
+            <tr>
+                {% for column in row %}
+                    <td>{{ column }}</td>
+                {% endfor %}
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}
