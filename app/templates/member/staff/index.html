@@ -2,10 +2,34 @@
 {% extends "base.html" %}
 
 {% block content %}
-
     <div class="container-fluid mb-3 mt-2">
         <h1>{{ title }}</h1>
-        <p class="lead">Staff</p>
-    </div>
 
+        <table class="table table-striped">
+            <thead>
+            <tr>
+                <th>#</th> <!-- Столбец для автонумерации -->
+                <th>ID</th>
+                <th>Имя сотрудника</th>
+                <th>Дата</th>
+                <th>Дата&Время</th>
+                <th>Активен</th>
+                <th>Состоит в командах</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for staff in staff_items %}
+                <tr>
+                    <td>{{ loop.index }}</td> <!-- Автонумерация -->
+                    <td>{{ staff.id }}</td>
+                    <td>{{ staff.staff_name }}</td>
+                    <td>{{ staff.staff_date.strftime('%d.%m.%Y') }}</td> <!-- Форматируем дату -->
+                    <td>{{ staff.staff_datetime.strftime('%d.%m.%Y %H:%M') if staff.staff_datetime else '—' }}</td> <!-- Форматируем дату и время -->
+                    <td>{{ 'Да' if staff.staff_active else 'Нет' }}</td> <!-- Статус активности -->
+                    <td>{{ staff.team_sets | length }}</td> <!-- Количество команд -->
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
 {% endblock %}

@@ -2,10 +2,30 @@
 {% extends "base.html" %}
 
 {% block content %}
-
     <div class="container-fluid mb-3 mt-2">
         <h1>{{ title }}</h1>
-        <p class="lead">user</p>
-    </div>
 
+        <table class="table table-striped">
+            <thead>
+            <tr>
+                <th>#</th> <!-- Столбец для автонумерации -->
+                <th>ID</th>
+                <th>Имя пользователя</th>
+                <th>Электронная почта</th>
+                <th>Роль</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for user in user_items %}
+                <tr>
+                    <td>{{ loop.index }}</td> <!-- Автонумерация -->
+                    <td>{{ user.id }}</td>
+                    <td>{{ user.user_name }}</td>
+                    <td>{{ user.user_email }}</td>
+                    <td>{{ user.role }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
 {% endblock %}

@@ -30,7 +30,7 @@ def login():
     :return: Сгенерированный HTML-код страницы авторизации или редирект на другую страницу.
     :rtype: str
     """
-    if current_user.is_authenticated and current_user == 'user':
+    if current_user.is_authenticated:
         log_and_flash('Пользователь уже авторизован!', 'warning')
         return redirect(url_for('index.index'))
 

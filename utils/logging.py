@@ -18,6 +18,8 @@ from logging.handlers import RotatingFileHandler
 from colorlog import ColoredFormatter
 
 
+
+
 class RequestUserFilter(logging.Filter):
     """
     Класс для добавления информации о пользователе и IP-адресе в каждый лог.

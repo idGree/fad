@@ -4,10 +4,10 @@
 
 Используется для организации и управления маршрутами (routes) и обработчиками запросов, связанными с этим модулем.
 """
-from flask import redirect, request, url_for, flash, render_template, current_app
+from flask import redirect, request, url_for, render_template, current_app
 from flask_login import current_user
 from flask_admin.contrib.sqla import ModelView
-from flask_admin import AdminIndexView, expose
+from flask_admin import BaseView, AdminIndexView, expose
 from sqlalchemy.exc import IntegrityError
 from utils.logging import log_and_flash
 
@@ -67,6 +67,32 @@ class MyModelView(ModelView):
         :rtype: bool
         """
         return False
+
+    def on_model_change(self, form, model, is_created):
+        """
+        Переопределение метода для логирования событий создания или изменения записи.
+
+        :param form: Форма, используемая для создания или изменения записи.
+        :param model: Модель, над которой проводится операция.
+        :param is_created: Флаг, указывающий, была ли запись создана (True) или обновлена (False).
+        :type form: FlaskForm
+        :type model: SQLAlchemy модель
+        :type is_created: bool
+        """
+        if is_created:
+            current_app.logger.info(f'Запись {model} была успешно создана.')
+        else:
+            current_app.logger.info(f'Запись {model} была обновлена.')
+
+    def after_model_delete(self, model):
+        """
+        Переопределение метода для логирования событий удаления записи.
+
+        :param model: Модель, которая будет удалена.
+        :type model: SQLAlchemy модель
+        """
+        current_app.logger.warning(f'Запись {model} была удалена.')
+
 
 
 class MyAdminIndexView(AdminIndexView):

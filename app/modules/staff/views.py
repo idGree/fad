@@ -6,6 +6,8 @@
 """
 from flask import Blueprint, render_template
 from flask_login import login_required
+from app.modules.staff.models import Staff
+from app.db import db
 
 blueprint = Blueprint('staff', __name__, url_prefix='/staff')
 
@@ -13,5 +15,9 @@ blueprint = Blueprint('staff', __name__, url_prefix='/staff')
 @blueprint.route('/')
 @login_required
 def staff():
-    title = 'Staff'
-    return render_template('member/staff/index.html', title=title)
+    title = 'Сотрудники'
+    # Загружаем всех сотрудников с подгрузкой связанных записей TeamSet
+    staff_items = Staff.query.options(
+        db.joinedload(Staff.team_sets)  # Подгружаем связанные записи из TeamSet
+    ).all()
+    return render_template('member/staff/index.html', title=title, staff_items=staff_items)

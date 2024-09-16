@@ -2,10 +2,32 @@
 {% extends "base.html" %}
 
 {% block content %}
-
     <div class="container-fluid mb-3 mt-2">
         <h1>{{ title }}</h1>
-        <p class="lead">team_set</p>
-    </div>
 
+        <table class="table table-striped">
+            <thead>
+            <tr>
+                <th>#</th> <!-- Добавили столбец для автонумерации -->
+                <th>ID</th>
+                <th>Команда</th>
+                <th>Сотрудник</th>
+                <th>FTE</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for item in team_set_items %}
+                <tr>
+                    <td>{{ loop.index }}</td> <!-- Используем loop.index для нумерации строк -->
+                    <td>{{ item.id }}</td>
+                    <td>{{ item.team.team_name }}</td>
+                    <td>{{ item.staff.staff_name }}</td>
+                    <td>{{ item.fte }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
 {% endblock %}
+
+

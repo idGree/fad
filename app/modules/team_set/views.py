@@ -8,6 +8,8 @@
 """
 from flask import Blueprint, render_template
 from flask_login import login_required
+from app.modules.team_set.models import TeamSet
+from app.db import db
 
 blueprint = Blueprint('team_set', __name__, url_prefix='/team_set')
 
@@ -15,5 +17,11 @@ blueprint = Blueprint('team_set', __name__, url_prefix='/team_set')
 @blueprint.route('/')
 @login_required
 def team_set():
-    title = 'team_set'
-    return render_template('member/team_set/index.html', title=title)
+    title = 'Состав команд'
+    # Загружаем все записи из TeamSet с подгрузкой связанных команд и сотрудников
+    team_set_items = TeamSet.query.options(
+        db.joinedload(TeamSet.team),  # Подгружаем связанные данные из Team
+        db.joinedload(TeamSet.staff)  # Подгружаем связанные данные из Staff
+    ).all()
+
+    return render_template('member/team_set/index.html', title=title, team_set_items=team_set_items)

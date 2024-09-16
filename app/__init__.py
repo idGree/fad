@@ -48,7 +48,6 @@ from app.modules.error.views import blueprint as error_bp
 csrf = CSRFProtect()
 
 
-
 def create_app(config_class=DevelopmentConfig):
     """
     Создает и конфигурирует экземпляр Flask-приложения.
@@ -82,6 +81,7 @@ def create_app(config_class=DevelopmentConfig):
 
     # Отключаем стандартное сообщение о доступе
     login_manager.login_message = None
+
     # login_manager.login_message = 'Доступ в личный кабинет разрешен только авторизованным пользователям!'
     # login_manager.login_message_category = 'danger'
 
@@ -130,7 +130,6 @@ def create_app(config_class=DevelopmentConfig):
     admin.add_view(StaffAdmin(Staff, db.session, endpoint='staff_admin', name='Staff'))
     admin.add_view(TeamSetAdmin(TeamSet, db.session, endpoint='team_set_admin', name='TeamSet'))
 
-    # TODO убрать отсюда
     @app.route('/')
     def root():
         """
